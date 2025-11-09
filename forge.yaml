@@ -1,0 +1,18 @@
+version:
+    scheme: semver
+    prefix: v
+build:
+    name: forge
+    main_path: ./main.go
+    targets:
+        - linux/amd64
+        - linux/arm64
+        - darwin/amd64
+        - darwin/arm64
+        - windows/amd64
+    ldflags: -s -w -X main.version={{ .Version }}
+    output_dir: dist
+git:
+    tag_prefix: v
+    default_branch: main
+
