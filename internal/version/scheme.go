@@ -311,7 +311,7 @@ func WithPrefix(version, prefix string) string {
 // Examples: "v1.0.0-hotfix.1", "2025.11.09-hotfix.2", "api/v1.0.0-patch.1"
 func IsHotfixVersion(tag string) bool {
 	// Match pattern: anything-suffix.number
-	// Common suffixes: hotfix, patch, fix
+	// Common hotfix suffixes: hotfix, patch, fix
 	parts := strings.Split(tag, "-")
 	if len(parts) < 2 {
 		return false
@@ -326,7 +326,14 @@ func IsHotfixVersion(tag string) bool {
 
 	// Check if second part is a number
 	_, err := strconv.Atoi(dotParts[1])
-	return err == nil
+	if err != nil {
+		return false
+	}
+
+	// The suffix should be one of the common hotfix suffixes
+	// This distinguishes hotfix versions from prereleases like "rc.1" or "beta.1"
+	suffix := strings.ToLower(dotParts[0])
+	return suffix == "hotfix" || suffix == "patch" || suffix == "fix"
 }
 
 // ParseHotfixVersion parses versions like "v1.0.0-hotfix.3".

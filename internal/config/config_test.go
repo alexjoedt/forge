@@ -479,3 +479,219 @@ testapp:
 		t.Errorf("Expected error to contain 'git.tag_prefix is required', got '%s'", err.Error())
 	}
 }
+
+// Hotfix Config Tests
+
+func TestAppConfig_GetHotfixConfig(t *testing.T) {
+	tests := []struct {
+		name   string
+		config AppConfig
+		want   HotfixConfig
+	}{
+		{
+			name: "explicit config",
+			config: AppConfig{
+				Git: GitConfig{
+					Hotfix: &HotfixConfig{
+						BranchPrefix: "hotfix/",
+						Suffix:       "patch",
+					},
+				},
+			},
+			want: HotfixConfig{
+				BranchPrefix: "hotfix/",
+				Suffix:       "patch",
+			},
+		},
+		{
+			name: "empty branch prefix gets default",
+			config: AppConfig{
+				Git: GitConfig{
+					Hotfix: &HotfixConfig{
+						BranchPrefix: "",
+						Suffix:       "hotfix",
+					},
+				},
+			},
+			want: HotfixConfig{
+				BranchPrefix: "release/",
+				Suffix:       "hotfix",
+			},
+		},
+		{
+			name: "empty suffix gets default",
+			config: AppConfig{
+				Git: GitConfig{
+					Hotfix: &HotfixConfig{
+						BranchPrefix: "release/",
+						Suffix:       "",
+					},
+				},
+			},
+			want: HotfixConfig{
+				BranchPrefix: "release/",
+				Suffix:       "hotfix",
+			},
+		},
+		{
+			name: "nil hotfix config returns all defaults",
+			config: AppConfig{
+				Git: GitConfig{
+					Hotfix: nil,
+				},
+			},
+			want: HotfixConfig{
+				BranchPrefix: "release/",
+				Suffix:       "hotfix",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.config.GetHotfixConfig()
+			if got.BranchPrefix != tt.want.BranchPrefix {
+				t.Errorf("GetHotfixConfig().BranchPrefix = %q, want %q", got.BranchPrefix, tt.want.BranchPrefix)
+			}
+			if got.Suffix != tt.want.Suffix {
+				t.Errorf("GetHotfixConfig().Suffix = %q, want %q", got.Suffix, tt.want.Suffix)
+			}
+		})
+	}
+}
+
+func TestConfig_DetectAppFromTag(t *testing.T) {
+	multiAppConfig := &Config{
+		DefaultApp: "api",
+		Apps: map[string]AppConfig{
+			"api": {
+				Git: GitConfig{TagPrefix: "api/v"},
+			},
+			"worker": {
+				Git: GitConfig{TagPrefix: "worker/v"},
+			},
+			"web": {
+				Git: GitConfig{TagPrefix: "web/"},
+			},
+		},
+	}
+
+	singleAppConfig := &Config{
+		Apps: map[string]AppConfig{
+			"single": {
+				Git: GitConfig{TagPrefix: "v"},
+			},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		config  *Config
+		tag     string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:   "api tag detected",
+			config: multiAppConfig,
+			tag:    "api/v1.0.0",
+			want:   "api",
+		},
+		{
+			name:   "worker tag detected",
+			config: multiAppConfig,
+			tag:    "worker/v2.3.0",
+			want:   "worker",
+		},
+		{
+			name:   "web tag detected",
+			config: multiAppConfig,
+			tag:    "web/1.0.0",
+			want:   "web",
+		},
+		{
+			name:   "no match returns default app",
+			config: multiAppConfig,
+			tag:    "v1.0.0",
+			want:   "api",
+		},
+		{
+			name:   "single app returns empty",
+			config: singleAppConfig,
+			tag:    "v1.0.0",
+			want:   "",
+		},
+		{
+			name: "no match and no default app returns error",
+			config: &Config{
+				Apps: map[string]AppConfig{
+					"api":    {Git: GitConfig{TagPrefix: "api/v"}},
+					"worker": {Git: GitConfig{TagPrefix: "worker/v"}},
+				},
+			},
+			tag:     "v1.0.0",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.config.DetectAppFromTag(tt.tag)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DetectAppFromTag(%q) error = %v, wantErr %v", tt.tag, err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("DetectAppFromTag(%q) = %q, want %q", tt.tag, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestConfig_ValidateAppTag(t *testing.T) {
+	config := &Config{
+		Apps: map[string]AppConfig{
+			"api": {
+				Git: GitConfig{TagPrefix: "api/v"},
+			},
+			"worker": {
+				Git: GitConfig{TagPrefix: "worker/v"},
+			},
+		},
+	}
+
+	tests := []struct {
+		name    string
+		appName string
+		tag     string
+		wantErr bool
+	}{
+		{
+			name:    "matching tag prefix",
+			appName: "api",
+			tag:     "api/v1.0.0",
+			wantErr: false,
+		},
+		{
+			name:    "non-matching tag prefix logs warning but no error",
+			appName: "api",
+			tag:     "worker/v1.0.0",
+			wantErr: false,
+		},
+		{
+			name:    "invalid app name",
+			appName: "invalid",
+			tag:     "v1.0.0",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := config.ValidateAppTag(tt.appName, tt.tag)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidateAppTag(%q, %q) error = %v, wantErr %v", tt.appName, tt.tag, err, tt.wantErr)
+			}
+		})
+	}
+}
