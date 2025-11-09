@@ -76,6 +76,7 @@ func main() {
 		Commands: []*cli.Command{
 			commands.Init(),
 			commands.Bump(),
+			commands.Hotfix(),
 			commands.Build(),
 			commands.Docker(),
 			commands.Version(),

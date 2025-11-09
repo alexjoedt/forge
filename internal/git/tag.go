@@ -522,3 +522,214 @@ func (t *Tagger) GetTagInfo(ctx context.Context, tagName string) (*TagInfo, erro
 		Message: message,
 	}, nil
 }
+
+// ============================================================================
+// Hotfix Workflow Functions
+// ============================================================================
+
+// GetCurrentBranch returns the currently checked out branch name.
+func GetCurrentBranch(repoDir string) (string, error) {
+	result := run.Cmd(context.Background(), "git", "-C", repoDir, "rev-parse", "--abbrev-ref", "HEAD")
+	if !result.Success() {
+		return "", fmt.Errorf("failed to get current branch: %s", result.Stderr)
+	}
+	return strings.TrimSpace(result.Stdout), nil
+}
+
+// IsHotfixBranch checks if current branch matches hotfix pattern.
+func IsHotfixBranch(branchName, prefix string) bool {
+	return strings.HasPrefix(branchName, prefix)
+}
+
+// ExtractTagFromBranch extracts the base tag from hotfix branch name.
+// Example: "release/api/v1.0.0" with prefix "release/" → "api/v1.0.0"
+func ExtractTagFromBranch(branchName, prefix string) (string, error) {
+	if !strings.HasPrefix(branchName, prefix) {
+		return "", fmt.Errorf("branch %q does not match prefix %q", branchName, prefix)
+	}
+	return strings.TrimPrefix(branchName, prefix), nil
+}
+
+// CreateHotfixBranch creates a new hotfix branch from specified tag.
+func (t *Tagger) CreateHotfixBranch(ctx context.Context, tag, branchPrefix string, checkout bool) (string, error) {
+	logger := log.FromContext(ctx)
+
+	// Branch name is prefix + full tag
+	branchName := branchPrefix + tag
+
+	// Validate tag exists
+	exists, err := t.TagExists(ctx, tag)
+	if err != nil {
+		return "", fmt.Errorf("failed to check if tag exists: %w", err)
+	}
+	if !exists {
+		return "", fmt.Errorf("tag %q does not exist", tag)
+	}
+
+	// Check if branch already exists
+	if t.branchExists(ctx, branchName) {
+		return "", fmt.Errorf("branch %q already exists\nCheckout with: git checkout %s", branchName, branchName)
+	}
+
+	if t.dryRun {
+		logger.Debugf("dry-run: would create branch %s from tag %s", branchName, tag)
+		return branchName, nil
+	}
+
+	// Create branch from tag
+	result := run.CmdInDir(ctx, t.repoDir, "git", "branch", branchName, tag)
+	if err := result.MustSucceed("create hotfix branch"); err != nil {
+		return "", fmt.Errorf("failed to create branch: %w", err)
+	}
+
+	logger.Debugf("created hotfix branch: %s", branchName)
+
+	// Checkout if requested
+	if checkout {
+		result := run.CmdInDir(ctx, t.repoDir, "git", "checkout", branchName)
+		if err := result.MustSucceed("checkout hotfix branch"); err != nil {
+			return "", fmt.Errorf("failed to checkout branch: %w", err)
+		}
+		logger.Debugf("checked out branch: %s", branchName)
+	}
+
+	return branchName, nil
+}
+
+// GetNextHotfixTag determines next hotfix version from base tag.
+// Example: base "v1.0.0", existing "v1.0.0-hotfix.2" → returns "v1.0.0-hotfix.3", seq 3
+func (t *Tagger) GetNextHotfixTag(ctx context.Context, baseTag, suffix string) (string, int, error) {
+	// List all hotfix tags for this base
+	pattern := fmt.Sprintf("%s-%s.*", baseTag, suffix)
+	tags, err := t.listTags(ctx, pattern)
+	if err != nil {
+		return "", 0, err
+	}
+
+	// Find highest sequence number
+	maxSeq := 0
+	for _, tag := range tags {
+		seq, err := parseHotfixSequence(tag, baseTag, suffix)
+		if err != nil {
+			continue // Skip malformed tags
+		}
+		if seq > maxSeq {
+			maxSeq = seq
+		}
+	}
+
+	// Next sequence
+	nextSeq := maxSeq + 1
+	nextTag := fmt.Sprintf("%s-%s.%d", baseTag, suffix, nextSeq)
+
+	return nextTag, nextSeq, nil
+}
+
+// CreateHotfixTag creates a hotfix tag from current HEAD.
+func (t *Tagger) CreateHotfixTag(ctx context.Context, tag, message string) error {
+	return t.CreateTag(ctx, tag, message)
+}
+
+// ListBranches returns all branches in the repository.
+func ListBranches(repoDir string) ([]string, error) {
+	result := run.Cmd(context.Background(), "git", "-C", repoDir, "branch", "--format=%(refname:short)")
+	if !result.Success() {
+		return nil, fmt.Errorf("failed to list branches: %s", result.Stderr)
+	}
+
+	lines := strings.Split(strings.TrimSpace(result.Stdout), "\n")
+	branches := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			branches = append(branches, line)
+		}
+	}
+	return branches, nil
+}
+
+// ValidateHotfixBaseTag ensures tag is valid for hotfix creation.
+func ValidateHotfixBaseTag(ctx context.Context, repoDir, tag string) error {
+	// Check if tag exists
+	tagger := NewTagger(repoDir, "", false)
+	exists, err := tagger.TagExists(ctx, tag)
+	if err != nil {
+		return fmt.Errorf("failed to check tag: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("tag %q does not exist", tag)
+	}
+
+	// Cannot be a hotfix tag itself
+	if version.IsHotfixVersion(tag) {
+		base, _, _, _ := version.ParseHotfixVersion(tag)
+		if base != nil {
+			return fmt.Errorf("cannot create hotfix from hotfix version %q\nUse the base version instead: %s", tag, base.String())
+		}
+		return fmt.Errorf("cannot create hotfix from hotfix version %q", tag)
+	}
+
+	return nil
+}
+
+// ValidateWorkingTreeClean ensures working tree is clean.
+func ValidateWorkingTreeClean(ctx context.Context, repoDir string) error {
+	tagger := NewTagger(repoDir, "", false)
+	hasChanges, err := tagger.HasUncommittedChanges(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to check working tree: %w", err)
+	}
+	if hasChanges {
+		return fmt.Errorf("working tree has uncommitted changes\nCommit or stash changes before creating hotfix tag")
+	}
+	return nil
+}
+
+// Helper functions
+
+// branchExists checks if a branch exists.
+func (t *Tagger) branchExists(ctx context.Context, branchName string) bool {
+	result := run.CmdInDir(ctx, t.repoDir, "git", "rev-parse", "--verify", branchName)
+	return result.Success()
+}
+
+// listTags lists all tags matching the pattern.
+func (t *Tagger) listTags(ctx context.Context, pattern string) ([]string, error) {
+	result := run.CmdInDir(ctx, t.repoDir, "git", "tag", "-l", pattern)
+	if !result.Success() {
+		return nil, fmt.Errorf("failed to list tags: %s", result.Stderr)
+	}
+
+	if result.Stdout == "" {
+		return []string{}, nil
+	}
+
+	lines := strings.Split(strings.TrimSpace(result.Stdout), "\n")
+	tags := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" {
+			tags = append(tags, line)
+		}
+	}
+	return tags, nil
+}
+
+// parseHotfixSequence extracts the sequence number from a hotfix tag.
+func parseHotfixSequence(tag, baseTag, suffix string) (int, error) {
+	// Expected format: baseTag-suffix.N
+	expectedPrefix := fmt.Sprintf("%s-%s.", baseTag, suffix)
+	if !strings.HasPrefix(tag, expectedPrefix) {
+		return 0, fmt.Errorf("tag does not match expected format")
+	}
+
+	seqStr := strings.TrimPrefix(tag, expectedPrefix)
+	seq, err := fmt.Sscanf(seqStr, "%d", new(int))
+	if err != nil || seq != 1 {
+		return 0, fmt.Errorf("invalid sequence number: %s", seqStr)
+	}
+
+	var seqNum int
+	fmt.Sscanf(seqStr, "%d", &seqNum)
+	return seqNum, nil
+}

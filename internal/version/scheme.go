@@ -302,3 +302,107 @@ func StripPrefix(tag, prefix string) string {
 func WithPrefix(version, prefix string) string {
 	return prefix + version
 }
+
+// ============================================================================
+// Hotfix Version Functions
+// ============================================================================
+
+// IsHotfixVersion checks if version string has hotfix suffix.
+// Examples: "v1.0.0-hotfix.1", "2025.11.09-hotfix.2", "api/v1.0.0-patch.1"
+func IsHotfixVersion(tag string) bool {
+	// Match pattern: anything-suffix.number
+	// Common suffixes: hotfix, patch, fix
+	parts := strings.Split(tag, "-")
+	if len(parts) < 2 {
+		return false
+	}
+
+	// Check if last part matches suffix.number pattern
+	lastPart := parts[len(parts)-1]
+	dotParts := strings.Split(lastPart, ".")
+	if len(dotParts) != 2 {
+		return false
+	}
+
+	// Check if second part is a number
+	_, err := strconv.Atoi(dotParts[1])
+	return err == nil
+}
+
+// ParseHotfixVersion parses versions like "v1.0.0-hotfix.3".
+// Returns base version, suffix, and sequence number.
+func ParseHotfixVersion(tag string) (*Version, string, int, error) {
+	if !IsHotfixVersion(tag) {
+		return nil, "", 0, fmt.Errorf("not a hotfix version: %s", tag)
+	}
+
+	// Split by last hyphen to separate base from suffix
+	lastHyphen := strings.LastIndex(tag, "-")
+	if lastHyphen == -1 {
+		return nil, "", 0, fmt.Errorf("invalid hotfix format: %s", tag)
+	}
+
+	baseStr := tag[:lastHyphen]
+	suffixPart := tag[lastHyphen+1:]
+
+	// Parse suffix and sequence: "hotfix.3"
+	dotIndex := strings.Index(suffixPart, ".")
+	if dotIndex == -1 {
+		return nil, "", 0, fmt.Errorf("invalid hotfix format: %s", tag)
+	}
+
+	suffix := suffixPart[:dotIndex]
+	seqStr := suffixPart[dotIndex+1:]
+
+	seq, err := strconv.Atoi(seqStr)
+	if err != nil {
+		return nil, "", 0, fmt.Errorf("invalid sequence number: %s", seqStr)
+	}
+
+	// Try to parse base as SemVer or CalVer
+	// We need to determine which scheme to use
+	// Try SemVer first (most common)
+	var baseVersion *Version
+
+	// Remove any prefix to parse the version
+	// For now, we'll try both schemes
+	if strings.Count(baseStr, ".") == 2 {
+		// Likely SemVer (3 parts) or CalVer date format
+		baseVersion, err = ParseSemVer(baseStr)
+		if err != nil {
+			// Try CalVer
+			baseVersion, err = ParseCalVer(baseStr)
+			if err != nil {
+				return nil, "", 0, fmt.Errorf("failed to parse base version %q: %w", baseStr, err)
+			}
+		}
+	} else {
+		// Likely CalVer with week format or other
+		baseVersion, err = ParseCalVer(baseStr)
+		if err != nil {
+			// Try SemVer as fallback
+			baseVersion, err = ParseSemVer(baseStr)
+			if err != nil {
+				return nil, "", 0, fmt.Errorf("failed to parse base version %q: %w", baseStr, err)
+			}
+		}
+	}
+
+	return baseVersion, suffix, seq, nil
+}
+
+// IncrementHotfixSequence bumps the hotfix sequence number.
+// "v1.0.0-hotfix.2" → "v1.0.0-hotfix.3"
+func IncrementHotfixSequence(tag string) (string, error) {
+	_, suffix, seq, err := ParseHotfixVersion(tag)
+	if err != nil {
+		return "", err
+	}
+
+	// Find the base tag
+	lastHyphen := strings.LastIndex(tag, "-")
+	baseTag := tag[:lastHyphen]
+
+	// Return incremented version
+	return fmt.Sprintf("%s-%s.%d", baseTag, suffix, seq+1), nil
+}

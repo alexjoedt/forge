@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/alexjoedt/forge/internal/log"
 	"gopkg.in/yaml.v3"
@@ -75,10 +76,22 @@ func (dc *DockerConfig) GetRepositories() []string {
 	return []string{}
 }
 
+// HotfixConfig holds hotfix workflow configuration.
+type HotfixConfig struct {
+	// Branch naming prefix. The full branch name is prefix + tag.
+	// Examples: "release/" creates "release/v1.0.0"
+	BranchPrefix string `yaml:"branch_prefix"` // Default: "release/"
+
+	// Version suffix for hotfix tags
+	// Examples: "hotfix", "patch", "fix"
+	Suffix string `yaml:"suffix"` // Default: "hotfix"
+}
+
 // GitConfig holds git-related settings.
 type GitConfig struct {
-	TagPrefix     string `yaml:"tag_prefix"`     // e.g., "v"
-	DefaultBranch string `yaml:"default_branch"` // e.g., "main"
+	TagPrefix     string        `yaml:"tag_prefix"`     // e.g., "v"
+	DefaultBranch string        `yaml:"default_branch"` // e.g., "main"
+	Hotfix        *HotfixConfig `yaml:"hotfix,omitempty"`
 }
 
 // NodeJSConfig holds Node.js/npm package.json version sync settings.
@@ -352,6 +365,26 @@ func (c *Config) GetAppConfig(app string) (*AppConfig, error) {
 	return nil, fmt.Errorf("no config found for '%s'", app)
 }
 
+// GetHotfixConfig returns hotfix config with defaults applied.
+func (ac *AppConfig) GetHotfixConfig() HotfixConfig {
+	if ac.Git.Hotfix != nil {
+		cfg := *ac.Git.Hotfix
+		// Apply defaults for empty fields
+		if cfg.BranchPrefix == "" {
+			cfg.BranchPrefix = "release/"
+		}
+		if cfg.Suffix == "" {
+			cfg.Suffix = "hotfix"
+		}
+		return cfg
+	}
+	// Return all defaults
+	return HotfixConfig{
+		BranchPrefix: "release/",
+		Suffix:       "hotfix",
+	}
+}
+
 // IsMultiApp returns true if this is a multi-app configuration
 func (c *Config) IsMultiApp() bool {
 	// If there's more than one app, or if defaultApp is set, it's multi-app
@@ -361,4 +394,60 @@ func (c *Config) IsMultiApp() bool {
 // GetAllApps returns all app configurations with their names
 func (c *Config) GetAllApps() map[string]AppConfig {
 	return c.Apps
+}
+
+// GetAllAppConfigs returns all app configurations as pointers
+func (c *Config) GetAllAppConfigs() []*AppConfig {
+	configs := make([]*AppConfig, 0, len(c.Apps))
+	for _, cfg := range c.Apps {
+		cfgCopy := cfg
+		configs = append(configs, &cfgCopy)
+	}
+	return configs
+}
+
+// DetectAppFromTag determines which app config to use based on tag prefix.
+// Returns empty string for single-app configs.
+func (c *Config) DetectAppFromTag(tag string) (string, error) {
+	// If single-app config, return empty string (no app needed)
+	if !c.IsMultiApp() {
+		return "", nil
+	}
+
+	// Iterate through apps, check if tag starts with app.Git.TagPrefix
+	for appName, app := range c.Apps {
+		if strings.HasPrefix(tag, app.Git.TagPrefix) {
+			return appName, nil
+		}
+	}
+
+	// If no match and default app exists, return default app
+	if c.DefaultApp != "" {
+		return c.DefaultApp, nil
+	}
+
+	// Otherwise error with available apps listed
+	appNames := make([]string, 0, len(c.Apps))
+	for name := range c.Apps {
+		appNames = append(appNames, name)
+	}
+	return "", fmt.Errorf("cannot determine app from tag %q\nAvailable apps: %v", tag, appNames)
+}
+
+// ValidateAppTag ensures app name matches tag prefix.
+func (c *Config) ValidateAppTag(appName, tag string) error {
+	app, err := c.GetAppConfig(appName)
+	if err != nil {
+		return err
+	}
+
+	if !strings.HasPrefix(tag, app.Git.TagPrefix) {
+		// Detect what app the tag suggests
+		detectedApp, _ := c.DetectAppFromTag(tag)
+		if detectedApp != "" && detectedApp != appName {
+			log.DefaultLogger.Warnf("Tag %q suggests app %q, but --app=%s was specified", tag, detectedApp, appName)
+		}
+	}
+
+	return nil
 }
