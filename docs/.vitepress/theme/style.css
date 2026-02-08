@@ -47,7 +47,7 @@
   /* Brand Colors */
   --vp-c-brand-deep: #004b96;
   --vp-c-brand-mid: #098bc2;
-  --vp-c-brand-bright: #5be6f5;
+  --vp-c-brand-bright: #004b96;
   --vp-c-brand-soft-color: rgba(9, 139, 194, 0.14);
 
   /* Code accent color */
@@ -117,7 +117,7 @@
  * -------------------------------------------------------------------------- */
 
 .DocSearch {
-  --docsearch-primary-color: var(--vp-c-brand-1) !important;
+  --docsearch-primary-color: var(--vp-c-brand-3) !important;
 }
 
 /**
@@ -140,7 +140,7 @@
 }
 
 .group .VPSidebarItem.level-0.is-active>.item>.link>.text {
-  color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-3);
 }
 
 /* Code blocks */
@@ -155,13 +155,13 @@ div[class*='language-'] {
 }
 
 .vp-doc .custom-block.tip .custom-block-title {
-  color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-3);
 }
 
 /* Links styling */
 .vp-doc a {
   text-decoration: none;
-  color: var(--vp-c-brand-1);
+  color: var(--vp-c-brand-3);
   transition: color 0.25s;
 }
 
