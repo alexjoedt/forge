@@ -1,0 +1,15 @@
+{
+  "scripts": {
+    "dev": "vitepress dev .",
+    "build": "vitepress build .",
+    "preview": "vitepress preview ."
+  },
+  "devDependencies": {
+    "@types/markdown-it-footnote": "^3.0.4",
+    "mermaid": "^11.12.2",
+    "vitepress": "^2.0.0-alpha.15"
+  },
+  "dependencies": {
+    "markdown-it-footnote": "^4.0.0"
+  }
+}
