@@ -452,3 +452,165 @@ func TestStripPrefix(t *testing.T) {
 		}
 	}
 }
+
+// Hotfix Version Tests
+
+func TestIsHotfixVersion(t *testing.T) {
+	tests := []struct {
+		name  string
+		tag   string
+		want  bool
+	}{
+		{"semver hotfix", "v1.0.0-hotfix.1", true},
+		{"semver hotfix seq", "v1.0.0-hotfix.5", true},
+		{"calver hotfix", "2025.44.1-hotfix.2", true},
+		{"custom suffix", "v2.0.0-patch.3", true},
+		{"namespaced", "api/v1.0.0-hotfix.1", true},
+		{"not hotfix", "v1.0.0", false},
+		{"prerelease", "v1.0.0-rc.1", false},
+		{"build metadata", "v1.0.0+build.123", false},
+		{"invalid", "v1.0.0-hotfix", false},
+		{"invalid seq", "v1.0.0-hotfix.abc", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := IsHotfixVersion(tt.tag)
+			if got != tt.want {
+				t.Errorf("IsHotfixVersion(%q) = %v, want %v", tt.tag, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParseHotfixVersion(t *testing.T) {
+	tests := []struct {
+		name       string
+		input      string
+		wantBase   string
+		wantSuffix string
+		wantSeq    int
+		wantErr    bool
+	}{
+		{
+			name:       "semver hotfix",
+			input:      "v1.0.0-hotfix.1",
+			wantBase:   "v1.0.0",
+			wantSuffix: "hotfix",
+			wantSeq:    1,
+		},
+		{
+			name:       "semver hotfix seq 5",
+			input:      "v1.0.0-hotfix.5",
+			wantBase:   "v1.0.0",
+			wantSuffix: "hotfix",
+			wantSeq:    5,
+		},
+		{
+			name:       "calver hotfix",
+			input:      "2025.44.1-hotfix.2",
+			wantBase:   "2025.44.1",
+			wantSuffix: "hotfix",
+			wantSeq:    2,
+		},
+		{
+			name:       "custom suffix patch",
+			input:      "v2.0.0-patch.3",
+			wantBase:   "v2.0.0",
+			wantSuffix: "patch",
+			wantSeq:    3,
+		},
+		{
+			name:       "custom suffix fix",
+			input:      "v1.5.2-fix.10",
+			wantBase:   "v1.5.2",
+			wantSuffix: "fix",
+			wantSeq:    10,
+		},
+		{
+			name:    "not hotfix",
+			input:   "v1.0.0",
+			wantErr: true,
+		},
+		{
+			name:    "invalid format",
+			input:   "v1.0.0-hotfix",
+			wantErr: true,
+		},
+		{
+			name:    "invalid seq",
+			input:   "v1.0.0-hotfix.abc",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			base, suffix, seq, err := ParseHotfixVersion(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseHotfixVersion(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+				return
+			}
+			if err != nil {
+				return
+			}
+			if base.String() != tt.wantBase {
+				t.Errorf("ParseHotfixVersion(%q) base = %q, want %q", tt.input, base.String(), tt.wantBase)
+			}
+			if suffix != tt.wantSuffix {
+				t.Errorf("ParseHotfixVersion(%q) suffix = %q, want %q", tt.input, suffix, tt.wantSuffix)
+			}
+			if seq != tt.wantSeq {
+				t.Errorf("ParseHotfixVersion(%q) seq = %d, want %d", tt.input, seq, tt.wantSeq)
+			}
+		})
+	}
+}
+
+func TestIncrementHotfixSequence(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:  "increment seq 1 to 2",
+			input: "v1.0.0-hotfix.1",
+			want:  "v1.0.0-hotfix.2",
+		},
+		{
+			name:  "increment seq 5 to 6",
+			input: "v1.0.0-hotfix.5",
+			want:  "v1.0.0-hotfix.6",
+		},
+		{
+			name:  "custom suffix",
+			input: "v2.0.0-patch.3",
+			want:  "v2.0.0-patch.4",
+		},
+		{
+			name:  "calver",
+			input: "2025.44-hotfix.2",
+			want:  "2025.44-hotfix.3",
+		},
+		{
+			name:    "not hotfix",
+			input:   "v1.0.0",
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := IncrementHotfixSequence(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("IncrementHotfixSequence(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("IncrementHotfixSequence(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
