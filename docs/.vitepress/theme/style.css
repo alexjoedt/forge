@@ -50,6 +50,9 @@
   --vp-c-brand-bright: #5be6f5;
   --vp-c-brand-soft-color: rgba(9, 139, 194, 0.14);
 
+  /* Code accent color */
+  --vp-c-text-code: #00408e;
+
   --vp-c-default-1: var(--vp-c-gray-1);
   --vp-c-default-2: var(--vp-c-gray-2);
   --vp-c-default-3: var(--vp-c-gray-3);
