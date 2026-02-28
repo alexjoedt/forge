@@ -376,25 +376,11 @@ func (b *Builder) executeDockerBuild(ctx context.Context, args []string, tags []
 
 	logger.Infof("running docker buildx command: docker %s", strings.Join(args, " "))
 
-	result := run.CmdInDir(ctx, b.repoDir, "docker", args...)
-
-	// Print stdout and stderr to console for visibility
-	if result.Stdout != "" {
-		fmt.Println("=== Docker Build Output (stdout) ===")
-		fmt.Println(result.Stdout)
-		fmt.Println("=== End stdout ===")
-	}
-	if result.Stderr != "" {
-		fmt.Println("=== Docker Build Output (stderr) ===")
-		fmt.Println(result.Stderr)
-		fmt.Println("=== End stderr ===")
-	}
+	result := run.CmdStreamInDir(ctx, b.repoDir, "docker", args...)
 
 	// Log the result details
 	logger.Debugf("docker build result",
 		"exitCode", result.ExitCode,
-		"stdout_length", len(result.Stdout),
-		"stderr_length", len(result.Stderr),
 		"success", result.Success())
 
 	if err := result.MustSucceed("docker build"); err != nil {

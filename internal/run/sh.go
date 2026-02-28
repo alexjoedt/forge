@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 
 	"github.com/alexjoedt/forge/internal/log"
@@ -81,6 +82,38 @@ func CmdInDir(ctx context.Context, dir, name string, args ...string) Result {
 			result.ExitCode = -1
 		}
 		logger.Debugf("command failed: %s (exit code: %d, stderr: %s)", name, result.ExitCode, result.Stderr)
+	}
+
+	return result
+}
+
+// CmdStreamInDir executes a command in the specified directory, streaming
+// stdout and stderr directly to os.Stdout and os.Stderr.
+// The returned Result will have empty Stdout/Stderr fields since output
+// is written directly to the terminal.
+func CmdStreamInDir(ctx context.Context, dir, name string, args ...string) Result {
+	logger := log.FromContext(ctx)
+	logger.Debugf("executing (streaming) command in directory %s: %s %v", dir, name, args)
+
+	cmd := exec.CommandContext(ctx, name, args...)
+	cmd.Dir = dir
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err := cmd.Run()
+
+	result := Result{
+		ExitCode: 0,
+		Err:      err,
+	}
+
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			result.ExitCode = exitErr.ExitCode()
+		} else {
+			result.ExitCode = -1
+		}
+		logger.Debugf("command failed: %s (exit code: %d)", name, result.ExitCode)
 	}
 
 	return result
