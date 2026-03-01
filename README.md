@@ -51,6 +51,23 @@ forge build                       # Simple cross-compilation (use GoReleaser ins
 forge docker                      # Build Docker images
 ```
 
+## Docker & Multi-Platform Builds
+
+To build images for platforms other than your host (e.g., `linux/arm64` on an AMD64 machine), QEMU emulation must be registered with the kernel and a `docker-container` buildx builder must be active.
+
+**1. Register QEMU binfmt handlers:**
+
+```bash
+docker run --privileged --rm tonistiigi/binfmt --install all
+```
+
+**2. Create and activate a multi-platform builder:**
+
+```bash
+docker buildx create --name multiplatform-builder --driver docker-container --use
+docker buildx inspect --bootstrap
+```
+
 ## Configuration
 
 Minimal `forge.yaml`:
