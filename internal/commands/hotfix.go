@@ -194,7 +194,7 @@ type HotfixBumpOutput struct {
 	Message  string `json:"message"`
 }
 
-//nolint:gocognit,nestif
+//nolint:gocognit,nestif // command handler intentionally coordinates multiple steps/branches; further splitting would obscure the hotfix workflow
 func hotfixBumpAction(ctx context.Context, cmd *cli.Command) error {
 	logger := log.FromContext(ctx)
 	out := output.FromContext(ctx)
