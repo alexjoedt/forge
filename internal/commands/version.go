@@ -107,6 +107,19 @@ func versionAction(ctx context.Context, cmd *cli.Command) error {
 		fmt.Printf("Status:          %s\n", table.Date("dirty (uncommitted changes)"))
 	}
 
+	// For SemVer repos, show prerelease status and latest stable tag if applicable.
+	if appConfig.Version.Scheme == "semver" {
+		if latestTag, ltErr := tagger.LatestTag(ctx); ltErr == nil && latestTag != "" {
+			vStr := version.StripPrefix(latestTag, tagPrefix)
+			if parsedVer, pErr := version.ParseSemVer(vStr); pErr == nil && parsedVer.IsPrerelease() {
+				fmt.Printf("Prerelease:      %s\n", table.Scheme("yes"))
+				if stableTag, sErr := tagger.LatestStableTag(ctx); sErr == nil && stableTag != "" && stableTag != latestTag {
+					fmt.Printf("Latest Stable:   %s\n", table.CurrentVersion(stableTag))
+				}
+			}
+		}
+	}
+
 	return nil
 }
 

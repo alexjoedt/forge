@@ -63,10 +63,17 @@ func ParseSemVer(s string) (*Version, error) {
 		s = parts[0]
 	}
 
-	// Parse major.minor.patch
+	// Parse major.minor.patch (spec §2)
 	versionParts := strings.Split(s, ".")
 	if len(versionParts) != 3 {
 		return nil, fmt.Errorf("invalid semver format: %s", s)
+	}
+
+	// Validate no leading zeros (spec §2).
+	for i, label := range []string{"major", "minor", "patch"} {
+		if p := versionParts[i]; len(p) > 1 && p[0] == '0' {
+			return nil, fmt.Errorf("invalid semver: %s version must not have leading zeros: %q", label, p)
+		}
 	}
 
 	var err error
@@ -83,6 +90,14 @@ func ParseSemVer(s string) (*Version, error) {
 	v.Patch, err = strconv.Atoi(versionParts[2])
 	if err != nil {
 		return nil, fmt.Errorf("invalid patch version: %w", err)
+	}
+
+	// Validate prerelease and metadata identifiers (spec §9, §10).
+	if err := ValidatePrereleaseIdentifiers(v.Pre); err != nil {
+		return nil, err
+	}
+	if err := ValidateMetadataIdentifiers(v.Meta); err != nil {
+		return nil, err
 	}
 
 	return v, nil
@@ -291,6 +306,210 @@ func (v *Version) WithMetadata(meta string) *Version {
 	next := *v
 	next.Meta = meta
 	return &next
+}
+
+// IsPrerelease reports whether the version has a prerelease identifier (spec §9).
+func (v *Version) IsPrerelease() bool {
+	return v.Pre != ""
+}
+
+// IsStable reports whether the version is a stable release (no prerelease identifier).
+func (v *Version) IsStable() bool {
+	return v.Pre == ""
+}
+
+// Graduate returns a new version with prerelease and metadata cleared,
+// preserving major.minor.patch. Use this to promote a prerelease to a stable release.
+func (v *Version) Graduate() *Version {
+	return &Version{
+		Scheme: v.Scheme,
+		Major:  v.Major,
+		Minor:  v.Minor,
+		Patch:  v.Patch,
+	}
+}
+
+// BumpPreRelease returns a new version with an updated prerelease identifier.
+// The base (major.minor.patch) is preserved.
+//
+// Rules:
+//   - Same channel → increment counter: "rc.1" → "rc.2"
+//   - Different channel or no prior counter → reset to 1: "alpha.2" + channel "rc" → "rc.1"
+//   - channel must be a single valid spec §9 identifier (no dots allowed)
+func (v *Version) BumpPreRelease(channel string) (*Version, error) {
+	if err := ValidateSingleIdentifier(channel); err != nil {
+		return nil, fmt.Errorf("invalid prerelease channel %q: %w", channel, err)
+	}
+	next := &Version{
+		Scheme: v.Scheme,
+		Major:  v.Major,
+		Minor:  v.Minor,
+		Patch:  v.Patch,
+	}
+	// If the current prerelease matches the channel and has a numeric counter, increment it.
+	if v.Pre != "" {
+		ids := strings.SplitN(v.Pre, ".", 2)
+		if ids[0] == channel && len(ids) == 2 && isNumericStr(ids[1]) {
+			n, _ := strconv.Atoi(ids[1])
+			next.Pre = fmt.Sprintf("%s.%d", channel, n+1)
+			return next, nil
+		}
+	}
+	// New channel or no matching counter: start at 1.
+	next.Pre = fmt.Sprintf("%s.1", channel)
+	return next, nil
+}
+
+// Compare compares two SemVer versions according to spec §11.
+// Returns -1 if a < b, 0 if a == b, 1 if a > b.
+// Build metadata (§10) is ignored for precedence.
+func Compare(a, b *Version) int {
+	if c := cmpInt(a.Major, b.Major); c != 0 {
+		return c
+	}
+	if c := cmpInt(a.Minor, b.Minor); c != 0 {
+		return c
+	}
+	if c := cmpInt(a.Patch, b.Patch); c != 0 {
+		return c
+	}
+	// Same numeric core. Release (no pre) > prerelease (spec §11.3).
+	switch {
+	case a.Pre == "" && b.Pre == "":
+		return 0
+	case a.Pre == "":
+		return 1
+	case b.Pre == "":
+		return -1
+	}
+	return comparePreRelease(a.Pre, b.Pre)
+}
+
+// comparePreRelease compares two prerelease strings identifier by identifier (spec §11.4).
+func comparePreRelease(a, b string) int {
+	aIds := strings.Split(a, ".")
+	bIds := strings.Split(b, ".")
+	n := len(aIds)
+	if len(bIds) < n {
+		n = len(bIds)
+	}
+	for i := 0; i < n; i++ {
+		if c := compareIdentifier(aIds[i], bIds[i]); c != 0 {
+			return c
+		}
+	}
+	// All common identifiers equal; more fields = higher precedence (spec §11.4.4).
+	return cmpInt(len(aIds), len(bIds))
+}
+
+// compareIdentifier compares two individual prerelease identifiers per spec §11.4.1.
+func compareIdentifier(a, b string) int {
+	aNum, bNum := isNumericStr(a), isNumericStr(b)
+	switch {
+	case aNum && bNum:
+		ai, _ := strconv.Atoi(a)
+		bi, _ := strconv.Atoi(b)
+		return cmpInt(ai, bi)
+	case aNum:
+		return -1 // numeric identifiers have lower precedence than alphanumeric (spec §11.4.1)
+	case bNum:
+		return 1
+	default:
+		if a < b {
+			return -1
+		}
+		if a > b {
+			return 1
+		}
+		return 0
+	}
+}
+
+// ValidatePrereleaseIdentifiers validates a prerelease string against spec §9.
+// Identifiers are dot-separated; each must match [0-9A-Za-z-]+.
+// Numeric-only identifiers must not have leading zeros.
+func ValidatePrereleaseIdentifiers(pre string) error {
+	if pre == "" {
+		return nil
+	}
+	for _, id := range strings.Split(pre, ".") {
+		if id == "" {
+			return fmt.Errorf("prerelease identifier must not be empty")
+		}
+		if !isValidIdentifierChars(id) {
+			return fmt.Errorf("prerelease identifier %q contains invalid characters (only [0-9A-Za-z-] allowed)", id)
+		}
+		if isNumericStr(id) && len(id) > 1 && id[0] == '0' {
+			return fmt.Errorf("numeric prerelease identifier %q must not have leading zeros", id)
+		}
+	}
+	return nil
+}
+
+// ValidateMetadataIdentifiers validates a build metadata string against spec §10.
+// Identifiers are dot-separated; each must match [0-9A-Za-z-]+.
+func ValidateMetadataIdentifiers(meta string) error {
+	if meta == "" {
+		return nil
+	}
+	for _, id := range strings.Split(meta, ".") {
+		if id == "" {
+			return fmt.Errorf("build metadata identifier must not be empty")
+		}
+		if !isValidIdentifierChars(id) {
+			return fmt.Errorf("build metadata identifier %q contains invalid characters (only [0-9A-Za-z-] allowed)", id)
+		}
+	}
+	return nil
+}
+
+// ValidateSingleIdentifier validates a single (no-dot) identifier for use as a prerelease channel.
+func ValidateSingleIdentifier(id string) error {
+	if id == "" {
+		return fmt.Errorf("identifier must not be empty")
+	}
+	if strings.Contains(id, ".") {
+		return fmt.Errorf("channel must be a single identifier without dots (use \"alpha\" or \"rc\", not \"rc.1\")")
+	}
+	if !isValidIdentifierChars(id) {
+		return fmt.Errorf("identifier %q contains invalid characters (only [0-9A-Za-z-] allowed)", id)
+	}
+	return nil
+}
+
+// isValidIdentifierChars reports whether s consists only of [0-9A-Za-z-].
+func isValidIdentifierChars(s string) bool {
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if !((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '-') {
+			return false
+		}
+	}
+	return true
+}
+
+// isNumericStr reports whether s consists entirely of decimal digits.
+func isNumericStr(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// cmpInt returns -1, 0, or 1 for integer comparison.
+func cmpInt(a, b int) int {
+	if a < b {
+		return -1
+	}
+	if a > b {
+		return 1
+	}
+	return 0
 }
 
 // StripPrefix removes a prefix (e.g., "v") from a version string.
