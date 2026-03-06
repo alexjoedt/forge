@@ -305,7 +305,12 @@ func (t *Tagger) IsTagOnCurrentCommit(ctx context.Context, tag string) (bool, er
 
 // CalculateNextVersion calculates the next version without creating a tag.
 // This is useful when you need to know the version before making changes (e.g., updating package.json).
-func (t *Tagger) CalculateNextVersion(ctx context.Context, scheme version.Scheme, bump version.BumpType, calverFormat, pre, meta string) (*version.Version, error) {
+func (t *Tagger) CalculateNextVersion(
+	ctx context.Context,
+	scheme version.Scheme,
+	bump version.BumpType,
+	calverFormat, pre, meta string,
+) (*version.Version, error) {
 	var next *version.Version
 
 	switch scheme {
@@ -387,7 +392,12 @@ func (t *Tagger) CommitVersionUpdate(ctx context.Context, filePath, version stri
 
 // CreateNextTag generates the next tag based on the scheme and creates it.
 // For semver, bump is required. For calver, the current date is used.
-func (t *Tagger) CreateNextTag(ctx context.Context, scheme version.Scheme, bump version.BumpType, calverFormat, pre, meta string) (string, error) {
+func (t *Tagger) CreateNextTag(
+	ctx context.Context,
+	scheme version.Scheme,
+	bump version.BumpType,
+	calverFormat, pre, meta string,
+) (string, error) {
 	logger := log.FromContext(ctx)
 
 	var next *version.Version
@@ -805,7 +815,11 @@ func ValidateHotfixBaseTag(ctx context.Context, repoDir, tag string) error {
 	if version.IsHotfixVersion(tag) {
 		base, _, _, _ := version.ParseHotfixVersion(tag)
 		if base != nil {
-			return fmt.Errorf("cannot create hotfix from hotfix version %q\nUse the base version instead: %s", tag, base.String())
+			return fmt.Errorf(
+				"cannot create hotfix from hotfix version %q\nUse the base version instead: %s",
+				tag,
+				base.String(),
+			)
 		}
 		return fmt.Errorf("cannot create hotfix from hotfix version %q", tag)
 	}

@@ -114,7 +114,8 @@ func versionAction(ctx context.Context, cmd *cli.Command) error {
 			vStr := version.StripPrefix(latestTag, tagPrefix)
 			if parsedVer, pErr := version.ParseSemVer(vStr); pErr == nil && parsedVer.IsPrerelease() {
 				fmt.Printf("Prerelease:      %s\n", table.Scheme("yes"))
-				if stableTag, sErr := tagger.LatestStableTag(ctx); sErr == nil && stableTag != "" && stableTag != latestTag {
+				if stableTag, sErr := tagger.LatestStableTag(ctx); sErr == nil && stableTag != "" &&
+					stableTag != latestTag {
 					fmt.Printf("Latest Stable:   %s\n", table.CurrentVersion(stableTag))
 				}
 			}
@@ -304,7 +305,7 @@ func versionListAction(ctx context.Context, cmd *cli.Command) error {
 		if len(commitShort) > 8 {
 			commitShort = commitShort[:8]
 		}
-		
+
 		tbl.AddRow(
 			table.CurrentVersion(tag.Version),
 			tag.Tag,
@@ -426,7 +427,9 @@ func versionNextAction(ctx context.Context, cmd *cli.Command) error {
 	case "calver":
 		versionScheme = version.SchemeCalVer
 		if cmd.IsSet("bump") {
-			logger.Warnf("--bump flag is ignored for calver scheme (versions are automatically determined by date/week)")
+			logger.Warnf(
+				"--bump flag is ignored for calver scheme (versions are automatically determined by date/week)",
+			)
 		}
 	default:
 		return fmt.Errorf("invalid scheme: %s (must be semver or calver)", scheme)

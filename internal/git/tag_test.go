@@ -142,7 +142,13 @@ func TestExtractTagFromBranch(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := ExtractTagFromBranch(tt.branchName, tt.prefix)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ExtractTagFromBranch(%q, %q) error = %v, wantErr %v", tt.branchName, tt.prefix, err, tt.wantErr)
+				t.Errorf(
+					"ExtractTagFromBranch(%q, %q) error = %v, wantErr %v",
+					tt.branchName,
+					tt.prefix,
+					err,
+					tt.wantErr,
+				)
 				return
 			}
 			if !tt.wantErr && got != tt.wantTag {
@@ -209,11 +215,25 @@ func TestParseHotfixSequence(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := parseHotfixSequence(tt.tag, tt.baseTag, tt.suffix)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("parseHotfixSequence(%q, %q, %q) error = %v, wantErr %v", tt.tag, tt.baseTag, tt.suffix, err, tt.wantErr)
+				t.Errorf(
+					"parseHotfixSequence(%q, %q, %q) error = %v, wantErr %v",
+					tt.tag,
+					tt.baseTag,
+					tt.suffix,
+					err,
+					tt.wantErr,
+				)
 				return
 			}
 			if !tt.wantErr && got != tt.wantSeq {
-				t.Errorf("parseHotfixSequence(%q, %q, %q) = %d, want %d", tt.tag, tt.baseTag, tt.suffix, got, tt.wantSeq)
+				t.Errorf(
+					"parseHotfixSequence(%q, %q, %q) = %d, want %d",
+					tt.tag,
+					tt.baseTag,
+					tt.suffix,
+					got,
+					tt.wantSeq,
+				)
 			}
 		})
 	}
@@ -256,14 +276,14 @@ func addAnnotatedTag(t *testing.T, dir, tag string) {
 
 func TestCalculatePreRelease(t *testing.T) {
 	tests := []struct {
-		name      string
+		name string
 		// tags are applied in order before calling CalculatePreRelease.
-		tags      []string
-		prefix    string
-		channel   string
-		bumpType  string
-		wantVer   string
-		wantErr   bool
+		tags     []string
+		prefix   string
+		channel  string
+		bumpType string
+		wantVer  string
+		wantErr  bool
 	}{
 		{
 			name:     "no existing tags, bump minor, alpha channel",

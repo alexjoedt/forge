@@ -457,9 +457,9 @@ func TestStripPrefix(t *testing.T) {
 
 func TestIsHotfixVersion(t *testing.T) {
 	tests := []struct {
-		name  string
-		tag   string
-		want  bool
+		name string
+		tag  string
+		want bool
 	}{
 		{"semver hotfix", "v1.0.0-hotfix.1", true},
 		{"semver hotfix seq", "v1.0.0-hotfix.5", true},

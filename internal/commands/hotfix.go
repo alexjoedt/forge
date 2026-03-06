@@ -68,7 +68,9 @@ func hotfixCreateAction(ctx context.Context, cmd *cli.Command) error {
 	// 1. Parse arguments
 	baseTag := cmd.Args().First()
 	if baseTag == "" {
-		return fmt.Errorf("base tag argument required\n\nUsage: forge hotfix create <base-tag>\n\nExample:\n  forge hotfix create v1.0.0")
+		return fmt.Errorf(
+			"base tag argument required\n\nUsage: forge hotfix create <base-tag>\n\nExample:\n  forge hotfix create v1.0.0",
+		)
 	}
 
 	dryRun := cmd.Bool("dry-run")
@@ -238,7 +240,9 @@ func hotfixBumpAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appConfig == nil {
-		return fmt.Errorf("not on a hotfix branch\n\nUse one of these commands:\n  forge hotfix create <tag>   - Create hotfix branch first\n  forge hotfix bump --base <tag>  - Create and bump in one step")
+		return fmt.Errorf(
+			"not on a hotfix branch\n\nUse one of these commands:\n  forge hotfix create <tag>   - Create hotfix branch first\n  forge hotfix bump --base <tag>  - Create and bump in one step",
+		)
 	}
 
 	// Validate working tree is clean
@@ -562,7 +566,9 @@ func hotfixListAction(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		if baseTag == "" {
-			return fmt.Errorf("base tag required (or run from hotfix branch)\n\nUsage: forge hotfix list <base-tag>\n\nExample:\n  forge hotfix list v1.0.0")
+			return fmt.Errorf(
+				"base tag required (or run from hotfix branch)\n\nUsage: forge hotfix list <base-tag>\n\nExample:\n  forge hotfix list v1.0.0",
+			)
 		}
 	}
 

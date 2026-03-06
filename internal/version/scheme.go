@@ -154,7 +154,10 @@ func ParseCalVer(s string) (*Version, error) {
 		// Only accept if second part is > 12 (definitely a week, not a month)
 		weekNum, err := strconv.Atoi(dateParts[1])
 		if err != nil || weekNum <= 12 {
-			return nil, fmt.Errorf("invalid calver format: %s (ambiguous 2-part format - use 3 parts for dates or week > 12)", s)
+			return nil, fmt.Errorf(
+				"invalid calver format: %s (ambiguous 2-part format - use 3 parts for dates or week > 12)",
+				s,
+			)
 		}
 		v.CalVerDate = strings.Join(dateParts, ".")
 	} else if len(dateParts) == 3 {
@@ -468,7 +471,10 @@ func ValidateMetadataIdentifiers(meta string) error {
 			return fmt.Errorf("build metadata identifier must not be empty")
 		}
 		if !isValidIdentifierChars(id) {
-			return fmt.Errorf("build metadata identifier %q contains invalid characters (only [0-9A-Za-z-] allowed)", id)
+			return fmt.Errorf(
+				"build metadata identifier %q contains invalid characters (only [0-9A-Za-z-] allowed)",
+				id,
+			)
 		}
 	}
 	return nil

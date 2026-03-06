@@ -198,7 +198,13 @@ func retagAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if dryRun {
-		fmt.Fprintf(os.Stdout, "dry-run: would move tag %s\n  from  %s\n  to    %s\n", tag, fromCommit[:7], toCommit[:7])
+		fmt.Fprintf(
+			os.Stdout,
+			"dry-run: would move tag %s\n  from  %s\n  to    %s\n",
+			tag,
+			fromCommit[:7],
+			toCommit[:7],
+		)
 		if push {
 			fmt.Fprintf(os.Stdout, "dry-run: would force-push tag %s to origin\n", tag)
 		}

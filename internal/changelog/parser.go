@@ -44,12 +44,12 @@ type Commit struct {
 
 // Changelog represents a collection of commits grouped by type.
 type Changelog struct {
-	FromTag   string
-	ToTag     string
-	FromDate  time.Time
-	ToDate    time.Time
-	Commits   []Commit
-	ByType    map[CommitType][]Commit
+	FromTag  string
+	ToTag    string
+	FromDate time.Time
+	ToDate   time.Time
+	Commits  []Commit
+	ByType   map[CommitType][]Commit
 }
 
 //nolint:gochecknoglobals
@@ -101,7 +101,7 @@ func Parse(ctx context.Context, repoDir, from, to string) (*Changelog, error) {
 	// Format: hash|short|author|date|subject|body
 	format := "%H|%h|%an|%aI|%s|%b"
 	result := run.CmdInDir(ctx, repoDir, "git", "log", logRange, "--no-merges", "--pretty=format:"+format, "--date=iso")
-	
+
 	if !result.Success() {
 		return nil, fmt.Errorf("git log failed: %s", result.Stderr)
 	}
@@ -119,15 +119,15 @@ func Parse(ctx context.Context, repoDir, from, to string) (*Changelog, error) {
 	// Parse commits
 	commits := []Commit{}
 	lines := strings.Split(output, "\n")
-	
+
 	var currentCommit *Commit
 	var bodyLines []string
-	
+
 	for _, line := range lines {
 		if line == "" {
 			continue
 		}
-		
+
 		// Check if this is a new commit line (starts with hash)
 		parts := strings.SplitN(line, "|", commitFields)
 		if len(parts) == commitFields {
@@ -137,7 +137,7 @@ func Parse(ctx context.Context, repoDir, from, to string) (*Changelog, error) {
 				commits = append(commits, *currentCommit)
 				bodyLines = []string{}
 			}
-			
+
 			// Parse new commit
 			hash := parts[0]
 			shortHash := parts[1]
@@ -145,9 +145,9 @@ func Parse(ctx context.Context, repoDir, from, to string) (*Changelog, error) {
 			dateStr := parts[3]
 			subject := parts[4]
 			body := parts[5]
-			
+
 			date, _ := time.Parse(time.RFC3339, dateStr)
-			
+
 			commit := &Commit{
 				Hash:      hash,
 				ShortHash: shortHash,
@@ -156,18 +156,18 @@ func Parse(ctx context.Context, repoDir, from, to string) (*Changelog, error) {
 				Subject:   subject,
 				Body:      body,
 			}
-			
+
 			// Parse conventional commit format
 			parseConventionalCommit(commit)
-			
+
 			// Check for breaking changes
 			checkBreakingChange(commit)
-			
+
 			// Extract PR number
 			extractPRNumber(commit)
-			
+
 			currentCommit = commit
-			
+
 			if body != "" {
 				bodyLines = append(bodyLines, body)
 			}
@@ -178,7 +178,7 @@ func Parse(ctx context.Context, repoDir, from, to string) (*Changelog, error) {
 			}
 		}
 	}
-	
+
 	// Save last commit
 	if currentCommit != nil {
 		currentCommit.Body = strings.TrimSpace(strings.Join(bodyLines, "\n"))
@@ -218,13 +218,13 @@ func parseConventionalCommit(commit *Commit) {
 	// Set type
 	typeStr := strings.ToLower(result["type"])
 	commit.Type = CommitType(typeStr)
-	
+
 	// Validate type
 	validTypes := []CommitType{
 		TypeFeat, TypeFix, TypeDocs, TypeStyle, TypeRefactor,
 		TypePerf, TypeTest, TypeBuild, TypeCI, TypeChore,
 	}
-	
+
 	if !slices.Contains(validTypes, commit.Type) {
 		commit.Type = TypeOther
 	}

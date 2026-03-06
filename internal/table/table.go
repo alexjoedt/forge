@@ -247,7 +247,7 @@ func stripAnsi(s string) string {
 	result := []rune{}
 	inEscape := false
 	runes := []rune(s)
-	
+
 	for i := 0; i < len(runes); i++ {
 		if runes[i] == '\x1b' && i+1 < len(runes) && runes[i+1] == '[' {
 			inEscape = true
@@ -262,7 +262,7 @@ func stripAnsi(s string) string {
 		}
 		result = append(result, runes[i])
 	}
-	
+
 	return string(result)
 }
 

@@ -89,12 +89,12 @@ func Init(ctx context.Context, opts Options) error {
 
 	// Ensure directory exists
 	dir := filepath.Dir(outputPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("create directory: %w", err)
 	}
 
 	// Write file
-	if err := os.WriteFile(outputPath, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(outputPath, []byte(content), 0o600); err != nil {
 		return fmt.Errorf("write config file: %w", err)
 	}
 
@@ -156,12 +156,12 @@ func InitWithCustomConfig(ctx context.Context, cfg *config.AppConfig, opts Optio
 
 	// Ensure directory exists
 	dir := filepath.Dir(outputPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("create directory: %w", err)
 	}
 
 	// Write file
-	if err := os.WriteFile(outputPath, data, 0644); err != nil {
+	if err := os.WriteFile(outputPath, data, 0o600); err != nil {
 		return fmt.Errorf("write config file: %w", err)
 	}
 

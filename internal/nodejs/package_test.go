@@ -312,7 +312,11 @@ func TestUpdater_UpdateVersion(t *testing.T) {
 				originalLines := len(strings.Split(tt.initial, "\n"))
 				newLines := len(strings.Split(content, "\n"))
 				if abs(originalLines-newLines) > 1 {
-					t.Errorf("formatting changed significantly: original %d lines, new %d lines", originalLines, newLines)
+					t.Errorf(
+						"formatting changed significantly: original %d lines, new %d lines",
+						originalLines,
+						newLines,
+					)
 				}
 			}
 		})

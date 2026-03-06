@@ -134,7 +134,7 @@ func PromptBumpType(currentVersion string, choices []BumpChoice) (*BumpChoice, e
 	}
 
 	title := fmt.Sprintf("Select version bump type (current: %s)", currentVersion)
-	
+
 	m := selectionModel{
 		choices: choices,
 		cursor:  0,

@@ -255,7 +255,11 @@ func Load(path string) (*Config, error) {
 
 	// If we have defaultApp or multiple apps, treat as multi-app config
 	if hasDefaultApp || appCount > 1 {
-		log.DefaultLogger.Debugf("loading multi app configuration (detected: defaultApp=%v, apps=%d)", hasDefaultApp, appCount)
+		log.DefaultLogger.Debugf(
+			"loading multi app configuration (detected: defaultApp=%v, apps=%d)",
+			hasDefaultApp,
+			appCount,
+		)
 		cfg := &Config{Apps: make(map[string]AppConfig)}
 		if err = yaml.Unmarshal(data, cfg); err != nil {
 			return nil, fmt.Errorf("unmarshal multi-app config: %w", err)

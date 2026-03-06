@@ -66,7 +66,10 @@ func initAction(ctx context.Context, cmd *cli.Command) error {
 		result := output.InitResult{
 			OutputPath: outputPath,
 			Created:    !dryRun,
-			Message:    fmt.Sprintf("%sCreated forge configuration", map[bool]string{true: "Would ", false: ""}[dryRun]),
+			Message: fmt.Sprintf(
+				"%sCreated forge configuration",
+				map[bool]string{true: "Would ", false: ""}[dryRun],
+			),
 		}
 		return out.Print(result)
 	}

@@ -54,7 +54,7 @@ func validateAction(ctx context.Context, cmd *cli.Command) error {
 	cfg, err := config.LoadFromDir(repoDir)
 	if err != nil {
 		issues = append(issues, fmt.Sprintf("Failed to load forge.yaml: %v", err))
-		
+
 		// Early exit if config can't be loaded
 		if out.IsJSON() {
 			result := map[string]any{
@@ -64,7 +64,7 @@ func validateAction(ctx context.Context, cmd *cli.Command) error {
 			}
 			return out.Print(result)
 		}
-		
+
 		logger.Errorf("Validation failed!")
 		for _, issue := range issues {
 			logger.Errorf("  ✗ %s", issue)

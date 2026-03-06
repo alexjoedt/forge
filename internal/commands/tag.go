@@ -203,7 +203,14 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 		choices := []interactive.BumpChoice{}
 
 		for _, bumpType := range []version.BumpType{version.BumpPatch, version.BumpMinor, version.BumpMajor} {
-			previewVer, previewErr := tagger.CalculateNextVersion(ctx, version.SchemeSemVer, bumpType, calverFormat, pre, meta)
+			previewVer, previewErr := tagger.CalculateNextVersion(
+				ctx,
+				version.SchemeSemVer,
+				bumpType,
+				calverFormat,
+				pre,
+				meta,
+			)
 			if previewErr != nil {
 				logger.Debugf("failed to calculate preview for %s: %v", bumpType, previewErr)
 				continue
@@ -269,7 +276,9 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 		versionScheme = version.SchemeCalVer
 		// Warn if --bump flag is provided with calver
 		if cmd.IsSet("bump") {
-			logger.Warnf("--bump flag is ignored for calver scheme (versions are automatically determined by date/week)")
+			logger.Warnf(
+				"--bump flag is ignored for calver scheme (versions are automatically determined by date/week)",
+			)
 		}
 	default:
 		return fmt.Errorf("invalid scheme: %s (must be semver or calver)", scheme)
@@ -473,7 +482,10 @@ func preAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if appConfig.Version.Scheme != "semver" {
-		return fmt.Errorf("forge bump pre only supports semver scheme (configured scheme: %s)", appConfig.Version.Scheme)
+		return fmt.Errorf(
+			"forge bump pre only supports semver scheme (configured scheme: %s)",
+			appConfig.Version.Scheme,
+		)
 	}
 
 	// Use git.tag_prefix as the default so tag discovery and creation use the same prefix.
