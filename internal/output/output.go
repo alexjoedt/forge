@@ -138,6 +138,7 @@ type RetagResult struct {
 	FromCommit string `json:"from_commit"`
 	ToCommit   string `json:"to_commit"`
 	Pushed     bool   `json:"pushed"`
+	Message    string `json:"message,omitempty"`
 }
 
 // ErrorResult represents an error result
