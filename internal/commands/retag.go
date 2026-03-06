@@ -101,7 +101,7 @@ func retagAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if prefix == "" {
-		prefix = appConfig.Git.TagPrefix
+		prefix = appConfig.Prefix
 	}
 
 	tagger := git.NewTagger(repoDir, prefix, dryRun)

@@ -59,13 +59,9 @@ forge validate                    # Check config and git state
 Minimal `forge.yaml`:
 
 ```yaml
-version:
-  scheme: semver    # or: calver
-  prefix: v
-
-git:
-  tag_prefix: v
-  default_branch: main
+scheme: semver    # or: calver
+prefix: v
+default_branch: main
 ```
 
 Monorepo:
@@ -74,20 +70,15 @@ Monorepo:
 defaultApp: api
 
 api:
-  version:
-    scheme: semver
-    prefix: v
-  git:
-    tag_prefix: api/v
-    default_branch: main
+  scheme: semver
+  prefix: api/v
+  default_branch: main
 
 worker:
-  version:
-    scheme: calver
-    calver_format: "2006.WW"  # Year.Week
-  git:
-    tag_prefix: worker/
-    default_branch: main
+  scheme: calver
+  calver_format: "2006.WW"  # Year.Week
+  prefix: worker/
+  default_branch: main
 ```
 
 ## Workflow

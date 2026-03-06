@@ -12,29 +12,19 @@ func TestLoadMultiAppConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "forge.yaml")
 
-	// Write the problematic config
+	// Write the config in new flat format
 	configContent := `# Forge Multi-App Configuration
 defaultApp: monitoring
 monitoring:
-    version:
-        scheme: semver
-        prefix: monitoring/v
-        calver_format: 2006.01.02
-        pre: ""
-        meta: ""
-    git:
-        tag_prefix: monitoring/v
-        default_branch: master
+    scheme: semver
+    prefix: monitoring/v
+    default_branch: master
+    calver_format: 2006.01.02
 hems:
-    version:
-        scheme: semver
-        prefix: hems/v
-        calver_format: 2006.WW
-        pre: ""
-        meta: ""
-    git:
-        tag_prefix: hems/v
-        default_branch: master
+    scheme: semver
+    prefix: hems/v
+    default_branch: master
+    calver_format: 2006.WW
 `
 
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
@@ -62,8 +52,8 @@ hems:
 	if !ok {
 		t.Fatalf("monitoring app not found in config")
 	}
-	if monitoring.Git.TagPrefix != "monitoring/v" {
-		t.Errorf("Expected monitoring.Git.TagPrefix to be 'monitoring/v', got '%s'", monitoring.Git.TagPrefix)
+	if monitoring.Prefix != "monitoring/v" {
+		t.Errorf("Expected monitoring.Prefix to be 'monitoring/v', got '%s'", monitoring.Prefix)
 	}
 
 	// Verify hems app
@@ -71,8 +61,8 @@ hems:
 	if !ok {
 		t.Fatalf("hems app not found in config")
 	}
-	if hems.Git.TagPrefix != "hems/v" {
-		t.Errorf("Expected hems.Git.TagPrefix to be 'hems/v', got '%s'", hems.Git.TagPrefix)
+	if hems.Prefix != "hems/v" {
+		t.Errorf("Expected hems.Prefix to be 'hems/v', got '%s'", hems.Prefix)
 	}
 }
 
@@ -81,14 +71,11 @@ func TestLoadSingleAppConfig(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "forge.yaml")
 
-	// Write a single-app config
-	configContent := `version:
-    scheme: semver
-    prefix: v
-    calver_format: 2006.01.02
-git:
-    tag_prefix: v
-    default_branch: main
+	// Write a single-app config in flat format
+	configContent := `scheme: semver
+prefix: v
+default_branch: main
+calver_format: 2006.01.02
 `
 
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
@@ -113,11 +100,11 @@ git:
 	}
 
 	// Verify fields
-	if app.Git.TagPrefix != "v" {
-		t.Errorf("Expected Git.TagPrefix to be 'v', got '%s'", app.Git.TagPrefix)
+	if app.Prefix != "v" {
+		t.Errorf("Expected Prefix to be 'v', got '%s'", app.Prefix)
 	}
-	if app.Version.Scheme != "semver" {
-		t.Errorf("Expected Version.Scheme to be 'semver', got '%s'", app.Version.Scheme)
+	if app.Scheme != "semver" {
+		t.Errorf("Expected Scheme to be 'semver', got '%s'", app.Scheme)
 	}
 }
 
@@ -131,101 +118,66 @@ func TestValidateAppConfig(t *testing.T) {
 		{
 			name: "valid config",
 			config: AppConfig{
-				Version: VersionConfig{
-					Scheme: "semver",
-					Prefix: "v",
-				},
-				Git: GitConfig{
-					TagPrefix:     "v",
-					DefaultBranch: "main",
-				},
+				Scheme:        "semver",
+				Prefix:        "v",
+				DefaultBranch: "main",
 			},
 			wantErr: false,
 		},
 		{
-			name: "missing version scheme",
+			name: "missing scheme",
 			config: AppConfig{
-				Version: VersionConfig{
-					Prefix: "v",
-				},
-				Git: GitConfig{
-					TagPrefix:     "v",
-					DefaultBranch: "main",
-				},
+				Prefix:        "v",
+				DefaultBranch: "main",
 			},
 			wantErr:     true,
-			errContains: "version.scheme is required",
+			errContains: "scheme is required",
 		},
 		{
-			name: "invalid version scheme",
+			name: "invalid scheme",
 			config: AppConfig{
-				Version: VersionConfig{
-					Scheme: "invalid",
-					Prefix: "v",
-				},
-				Git: GitConfig{
-					TagPrefix:     "v",
-					DefaultBranch: "main",
-				},
+				Scheme:        "invalid",
+				Prefix:        "v",
+				DefaultBranch: "main",
 			},
 			wantErr:     true,
-			errContains: "invalid version.scheme: 'invalid'",
+			errContains: "invalid scheme: 'invalid'",
 		},
 		{
-			name: "missing git tag prefix",
+			name: "missing prefix",
 			config: AppConfig{
-				Version: VersionConfig{
-					Scheme: "semver",
-					Prefix: "v",
-				},
-				Git: GitConfig{
-					DefaultBranch: "main",
-				},
+				Scheme:        "semver",
+				DefaultBranch: "main",
 			},
 			wantErr:     true,
-			errContains: "git.tag_prefix is required",
+			errContains: "prefix is required",
 		},
 		{
-			name: "missing git default branch",
+			name: "missing default branch",
 			config: AppConfig{
-				Version: VersionConfig{
-					Scheme: "semver",
-					Prefix: "v",
-				},
-				Git: GitConfig{
-					TagPrefix: "v",
-				},
+				Scheme: "semver",
+				Prefix: "v",
 			},
 			wantErr:     true,
-			errContains: "git.default_branch is required",
+			errContains: "default_branch is required",
 		},
 		{
 			name: "calver without format",
 			config: AppConfig{
-				Version: VersionConfig{
-					Scheme: "calver",
-					Prefix: "v",
-				},
-				Git: GitConfig{
-					TagPrefix:     "v",
-					DefaultBranch: "main",
-				},
+				Scheme:        "calver",
+				Prefix:        "v",
+				DefaultBranch: "main",
 			},
 			wantErr:     true,
-			errContains: "version.calver_format is required",
+			errContains: "calver_format is required",
 		},
 		{
 			name: "valid calver config",
 			config: AppConfig{
-				Version: VersionConfig{
-					Scheme:       "calver",
-					Prefix:       "v",
-					CalVerFormat: "2006.01.02",
-				},
-				Git: GitConfig{
-					TagPrefix:     "v",
-					DefaultBranch: "main",
-				},
+				Scheme:        "calver",
+				Prefix:        "v",
+				DefaultBranch: "main",
+				CalVerFormat:  "2006.01.02",
 			},
 			wantErr: false,
 		},
@@ -251,14 +203,9 @@ func TestValidateAppConfig(t *testing.T) {
 
 func TestValidateCalVerFormatErrorMessage(t *testing.T) {
 	config := AppConfig{
-		Version: VersionConfig{
-			Scheme: "calver",
-			Prefix: "v",
-		},
-		Git: GitConfig{
-			TagPrefix:     "v",
-			DefaultBranch: "main",
-		},
+		Scheme:        "calver",
+		Prefix:        "v",
+		DefaultBranch: "main",
 	}
 
 	err := config.Validate()
@@ -270,7 +217,7 @@ func TestValidateCalVerFormatErrorMessage(t *testing.T) {
 
 	// Check that error message contains key information
 	expectedParts := []string{
-		"version.calver_format is required",
+		"calver_format is required",
 		"Supported CalVer formats",
 		"2006.01.02",
 		"2006.WW",
@@ -290,21 +237,17 @@ func TestLoadMultiAppConfigWithInvalidApp(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "forge.yaml")
 
-	// Write a multi-app config with one invalid app (missing git section)
+	// Write a multi-app config with one invalid app (missing prefix)
 	configContent := `defaultApp: forge
 
 forge:
-  version:
-    scheme: semver
-    prefix: v
-  git:
-    tag_prefix: v
-    default_branch: main
+  scheme: semver
+  prefix: v
+  default_branch: main
 
 testapp:
-  version:
-    scheme: calver
-    calver_format: "2006.01.02"
+  scheme: calver
+  calver_format: "2006.01.02"
 `
 
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
@@ -317,12 +260,12 @@ testapp:
 		t.Fatal("Expected error when loading config with invalid app, got nil")
 	}
 
-	// Check that the error mentions testapp and git.tag_prefix
+	// Check that the error mentions testapp and prefix
 	if !strings.Contains(err.Error(), "invalid config for app 'testapp'") {
 		t.Errorf("Expected error to contain 'invalid config for app 'testapp'', got '%s'", err.Error())
 	}
-	if !strings.Contains(err.Error(), "git.tag_prefix is required") {
-		t.Errorf("Expected error to contain 'git.tag_prefix is required', got '%s'", err.Error())
+	if !strings.Contains(err.Error(), "prefix is required") {
+		t.Errorf("Expected error to contain 'prefix is required', got '%s'", err.Error())
 	}
 }
 
@@ -337,11 +280,9 @@ func TestAppConfig_GetHotfixConfig(t *testing.T) {
 		{
 			name: "explicit config",
 			config: AppConfig{
-				Git: GitConfig{
-					Hotfix: &HotfixConfig{
-						BranchPrefix: "hotfix/",
-						Suffix:       "patch",
-					},
+				Hotfix: &HotfixConfig{
+					BranchPrefix: "hotfix/",
+					Suffix:       "patch",
 				},
 			},
 			want: HotfixConfig{
@@ -352,11 +293,9 @@ func TestAppConfig_GetHotfixConfig(t *testing.T) {
 		{
 			name: "empty branch prefix gets default",
 			config: AppConfig{
-				Git: GitConfig{
-					Hotfix: &HotfixConfig{
-						BranchPrefix: "",
-						Suffix:       "hotfix",
-					},
+				Hotfix: &HotfixConfig{
+					BranchPrefix: "",
+					Suffix:       "hotfix",
 				},
 			},
 			want: HotfixConfig{
@@ -367,11 +306,9 @@ func TestAppConfig_GetHotfixConfig(t *testing.T) {
 		{
 			name: "empty suffix gets default",
 			config: AppConfig{
-				Git: GitConfig{
-					Hotfix: &HotfixConfig{
-						BranchPrefix: "release/",
-						Suffix:       "",
-					},
+				Hotfix: &HotfixConfig{
+					BranchPrefix: "release/",
+					Suffix:       "",
 				},
 			},
 			want: HotfixConfig{
@@ -380,12 +317,8 @@ func TestAppConfig_GetHotfixConfig(t *testing.T) {
 			},
 		},
 		{
-			name: "nil hotfix config returns all defaults",
-			config: AppConfig{
-				Git: GitConfig{
-					Hotfix: nil,
-				},
-			},
+			name:   "nil hotfix config returns all defaults",
+			config: AppConfig{},
 			want: HotfixConfig{
 				BranchPrefix: "release/",
 				Suffix:       "hotfix",
@@ -410,23 +343,15 @@ func TestConfig_DetectAppFromTag(t *testing.T) {
 	multiAppConfig := &Config{
 		DefaultApp: "api",
 		Apps: map[string]AppConfig{
-			"api": {
-				Git: GitConfig{TagPrefix: "api/v"},
-			},
-			"worker": {
-				Git: GitConfig{TagPrefix: "worker/v"},
-			},
-			"web": {
-				Git: GitConfig{TagPrefix: "web/"},
-			},
+			"api":    {Prefix: "api/v"},
+			"worker": {Prefix: "worker/v"},
+			"web":    {Prefix: "web/"},
 		},
 	}
 
 	singleAppConfig := &Config{
 		Apps: map[string]AppConfig{
-			"single": {
-				Git: GitConfig{TagPrefix: "v"},
-			},
+			"single": {Prefix: "v"},
 		},
 	}
 
@@ -471,8 +396,8 @@ func TestConfig_DetectAppFromTag(t *testing.T) {
 			name: "no match and no default app returns error",
 			config: &Config{
 				Apps: map[string]AppConfig{
-					"api":    {Git: GitConfig{TagPrefix: "api/v"}},
-					"worker": {Git: GitConfig{TagPrefix: "worker/v"}},
+					"api":    {Prefix: "api/v"},
+					"worker": {Prefix: "worker/v"},
 				},
 			},
 			tag:     "v1.0.0",
@@ -497,12 +422,8 @@ func TestConfig_DetectAppFromTag(t *testing.T) {
 func TestConfig_ValidateAppTag(t *testing.T) {
 	config := &Config{
 		Apps: map[string]AppConfig{
-			"api": {
-				Git: GitConfig{TagPrefix: "api/v"},
-			},
-			"worker": {
-				Git: GitConfig{TagPrefix: "worker/v"},
-			},
+			"api":    {Prefix: "api/v"},
+			"worker": {Prefix: "worker/v"},
 		},
 	}
 

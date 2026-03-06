@@ -13,13 +13,9 @@ forge init
 This creates a `forge.yaml` file with sensible defaults:
 
 ```yaml
-version:
-  scheme: semver
-  prefix: v
-
-git:
-  tag_prefix: v
-  default_branch: main
+scheme: semver
+prefix: v
+default_branch: main
 ```
 
 ::: tip

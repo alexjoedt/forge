@@ -129,14 +129,13 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 	// Override config with flags
 	scheme := cmd.String("scheme")
 	if scheme == "" {
-		scheme = appConfig.Version.Scheme
+		scheme = appConfig.Scheme
 	}
 
-	// Use git.tag_prefix as the default so tag discovery and creation use the same prefix.
-	// --prefix CLI flag overrides it consistently for both operations.
+	// --prefix CLI flag overrides config consistently for both tag discovery and creation.
 	prefix := cmd.String("prefix")
 	if prefix == "" {
-		prefix = appConfig.Git.TagPrefix
+		prefix = appConfig.Prefix
 	}
 
 	// Handle initial version creation
@@ -146,17 +145,17 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 
 	calverFormat := cmd.String("calver-format")
 	if calverFormat == "" {
-		calverFormat = appConfig.Version.CalVerFormat
+		calverFormat = appConfig.CalVerFormat
 	}
 
 	pre := cmd.String("pre")
 	if pre == "" {
-		pre = appConfig.Version.Pre
+		pre = appConfig.Pre
 	}
 
 	meta := cmd.String("meta")
 	if meta == "" {
-		meta = appConfig.Version.Meta
+		meta = appConfig.Meta
 	}
 
 	// Create tagger for getting current version
@@ -481,18 +480,17 @@ func preAction(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("get app config: %w", err)
 	}
 
-	if appConfig.Version.Scheme != "semver" {
+	if appConfig.Scheme != "semver" {
 		return fmt.Errorf(
 			"forge bump pre only supports semver scheme (configured scheme: %s)",
-			appConfig.Version.Scheme,
+			appConfig.Scheme,
 		)
 	}
 
-	// Use git.tag_prefix as the default so tag discovery and creation use the same prefix.
-	// --prefix CLI flag overrides it consistently for both operations.
+	// --prefix CLI flag overrides config consistently for both tag discovery and creation.
 	prefix := cmd.String("prefix")
 	if prefix == "" {
-		prefix = appConfig.Git.TagPrefix
+		prefix = appConfig.Prefix
 	}
 
 	tagger := git.NewTagger(repoDir, prefix, dryRun)

@@ -82,30 +82,30 @@ func validateAction(ctx context.Context, cmd *cli.Command) error {
 		logger.Debugf("✓ App configuration found")
 
 		// Check version scheme
-		if appConfig.Version.Scheme != "semver" && appConfig.Version.Scheme != "calver" {
-			issues = append(issues, fmt.Sprintf("Invalid version scheme '%s' (must be 'semver' or 'calver')", appConfig.Version.Scheme))
+		if appConfig.Scheme != "semver" && appConfig.Scheme != "calver" {
+			issues = append(issues, fmt.Sprintf("Invalid version scheme '%s' (must be 'semver' or 'calver')", appConfig.Scheme))
 		} else {
-			logger.Debugf("✓ Version scheme: %s", appConfig.Version.Scheme)
+			logger.Debugf("✓ Version scheme: %s", appConfig.Scheme)
 		}
 
 		// Check calver format if calver scheme
-		if appConfig.Version.Scheme == "calver" {
-			if appConfig.Version.CalVerFormat == "" {
+		if appConfig.Scheme == "calver" {
+			if appConfig.CalVerFormat == "" {
 				warnings = append(warnings, "CalVer scheme without calver_format (will use default)")
 			} else {
-				logger.Debugf("✓ CalVer format: %s", appConfig.Version.CalVerFormat)
+				logger.Debugf("✓ CalVer format: %s", appConfig.CalVerFormat)
 			}
 		}
 
-		// Check git tag prefix
-		if appConfig.Git.TagPrefix == "" {
-			warnings = append(warnings, "No git tag prefix configured (tags will have no prefix)")
+		// Check tag prefix
+		if appConfig.Prefix == "" {
+			warnings = append(warnings, "No tag prefix configured (tags will have no prefix)")
 		} else {
-			logger.Debugf("✓ Git tag prefix: %s", appConfig.Git.TagPrefix)
+			logger.Debugf("✓ Tag prefix: %s", appConfig.Prefix)
 		}
 
 		// Check for existing tags
-		appTagger := git.NewTagger(repoDir, appConfig.Git.TagPrefix, false)
+		appTagger := git.NewTagger(repoDir, appConfig.Prefix, false)
 		tags, err := appTagger.ListAllTags(ctx)
 		if err != nil {
 			warnings = append(warnings, fmt.Sprintf("Failed to list tags: %v", err))

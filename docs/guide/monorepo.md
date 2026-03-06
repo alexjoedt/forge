@@ -18,21 +18,15 @@ A monorepo config uses top-level keys for each app, plus a `defaultApp` field:
 defaultApp: api
 
 api:
-  version:
-    scheme: semver
-    prefix: v
-  git:
-    tag_prefix: api/v
-    default_branch: main
+  scheme: semver
+  prefix: api/v
+  default_branch: main
 
 worker:
-  version:
-    scheme: calver
-    calver_format: "2006.WW"
-    prefix: v
-  git:
-    tag_prefix: worker/v
-    default_branch: main
+  scheme: calver
+  calver_format: "2006.WW"
+  prefix: worker/v
+  default_branch: main
 ```
 
 ::: tip
@@ -53,7 +47,7 @@ forge bump --bump minor --app worker
 
 ## Tag Namespacing
 
-Each app's `git.tag_prefix` creates namespaced tags. This prevents collisions and lets Forge identify which tags belong to which app:
+Each app's `prefix` creates namespaced tags. This prevents collisions and lets Forge identify which tags belong to which app:
 
 ```
 api/v1.0.0

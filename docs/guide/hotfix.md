@@ -90,15 +90,16 @@ forge hotfix list
 
 ## Configuration
 
-Hotfix behavior is configured under `git.hotfix`:
+Hotfix behavior is configured under `hotfix`:
 
 ```yaml
-git:
-  tag_prefix: v
-  default_branch: main
-  hotfix:
-    branch_prefix: "release/"    # Branch: release/v1.5.0
-    suffix: "hotfix"             # Tag: v1.5.0-hotfix.1
+scheme: semver
+prefix: v
+default_branch: main
+
+hotfix:
+  branch_prefix: "release/"    # Branch: release/v1.5.0
+  suffix: "hotfix"             # Tag: v1.5.0-hotfix.1
 ```
 
 ### Custom Naming
@@ -106,15 +107,14 @@ git:
 You can customize both the branch prefix and the tag suffix:
 
 ```yaml
-git:
-  hotfix:
-    branch_prefix: "hotfix/"    # Branch: hotfix/v1.5.0
-    suffix: "patch"             # Tag: v1.5.0-patch.1
+hotfix:
+  branch_prefix: "hotfix/"    # Branch: hotfix/v1.5.0
+  suffix: "patch"             # Tag: v1.5.0-patch.1
 ```
 
 ### Defaults
 
-If `git.hotfix` is omitted, Forge uses these defaults:
+If `hotfix` is omitted, Forge uses these defaults:
 
 | Setting | Default | Example |
 |---------|---------|---------|
@@ -137,16 +137,18 @@ Each app can have its own hotfix configuration:
 
 ```yaml
 api:
-  git:
-    tag_prefix: api/v
-    hotfix:
-      branch_prefix: "hotfix/"
-      suffix: "patch"
+  scheme: semver
+  prefix: api/v
+  default_branch: main
+  hotfix:
+    branch_prefix: "hotfix/"
+    suffix: "patch"
 
 worker:
-  git:
-    tag_prefix: worker/v
-    # Uses defaults: release/, hotfix
+  scheme: calver
+  prefix: worker/v
+  default_branch: main
+  # Uses defaults: release/, hotfix
 ```
 
 ## Full Workflow Example

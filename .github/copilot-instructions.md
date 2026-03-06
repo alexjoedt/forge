@@ -59,29 +59,22 @@ Run tests for a specific package: `go test ./internal/version/...`
 
 ```yaml
 # Single-app
-version:
-  scheme: semver   # or: calver
-  prefix: v
-  calver_format: "2006.WW"   # CalVer only
-git:
-  tag_prefix: v
-  default_branch: main
+scheme: semver       # or: calver
+prefix: v
+default_branch: main
+calver_format: "2006.WW"   # CalVer only
 nodejs:
   enabled: false
 
 # Monorepo — flat map of app configs
 defaultApp: api
 api:
-  version:
-    scheme: semver
-  git:
-    tag_prefix: api/v
+  scheme: semver
+  prefix: api/v
 worker:
-  version:
-    scheme: calver
-    calver_format: "2006.WW"
-  git:
-    tag_prefix: worker/v
+  scheme: calver
+  calver_format: "2006.WW"
+  prefix: worker/v
 ```
 
-> `version.pre` and `version.meta` fields exist in structs but are **ALPHA** — not production-ready.
+> `pre` and `meta` fields exist in structs but are **ALPHA** — not production-ready.

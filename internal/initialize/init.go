@@ -13,7 +13,7 @@ import (
 
 const multiAppConfigHeader = `# Forge Multi-App Configuration
 # This file configures the forge CLI tool for managing multiple apps in a monorepo.
-# Each application has its own version scheme and git tag prefix.
+# Each application has its own version scheme and tag prefix.
 #
 # Usage:
 #   forge bump minor --app api            # Tag the API app

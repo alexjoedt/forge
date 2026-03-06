@@ -128,7 +128,7 @@ func changelogAction(ctx context.Context, cmd *cli.Command) error {
 
 	// Parse commits
 	logger.Infof("Parsing git commits...")
-	parser := changelog.NewParser(repoDir, appConfig.Git.TagPrefix)
+	parser := changelog.NewParser(repoDir, appConfig.Prefix)
 
 	cl, err := parser.Parse(ctx, from, to)
 	if err != nil {
