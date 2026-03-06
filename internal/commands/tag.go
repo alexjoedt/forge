@@ -52,12 +52,12 @@ func Bump() *cli.Command {
 			},
 			&cli.StringFlag{
 				Name:  "pre",
-				Usage: "[ALPHA] prerelease identifier (e.g., rc.1) - not fully implemented",
+				Usage: "prerelease suffix to append (e.g., rc.1) — use 'forge bump pre' for smart lifecycle management",
 				Value: "",
 			},
 			&cli.StringFlag{
 				Name:  "meta",
-				Usage: "[ALPHA] build metadata - not fully implemented",
+				Usage: "build metadata to append (e.g., build.123)",
 				Value: "",
 			},
 			&cli.StringFlag{
@@ -85,6 +85,9 @@ func Bump() *cli.Command {
 			appFlag,
 		},
 		Action: tagAction,
+		Commands: []*cli.Command{
+			BumpPre(),
+		},
 	}
 }
 
@@ -127,16 +130,16 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 		scheme = appConfig.Version.Scheme
 	}
 
+	// Use git.tag_prefix as the default so tag discovery and creation use the same prefix.
+	// --prefix CLI flag overrides it consistently for both operations.
 	prefix := cmd.String("prefix")
 	if prefix == "" {
-		prefix = appConfig.Version.Prefix
+		prefix = appConfig.Git.TagPrefix
 	}
-
-	tagPrefix := appConfig.Git.TagPrefix
 
 	// Handle initial version creation
 	if initialVersion != "" {
-		return createInitialTag(ctx, repoDir, tagPrefix, initialVersion, dryRun, cmd.Bool("push"))
+		return createInitialTag(ctx, repoDir, prefix, initialVersion, dryRun, cmd.Bool("push"))
 	}
 
 	calverFormat := cmd.String("calver-format")
@@ -148,32 +151,37 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 	if pre == "" {
 		pre = appConfig.Version.Pre
 	}
-	if pre != "" {
-		logger.Warnf("⚠️  --pre flag is in ALPHA state and not fully implemented. Do not use in production.")
-	}
 
 	meta := cmd.String("meta")
 	if meta == "" {
 		meta = appConfig.Version.Meta
 	}
-	if meta != "" {
-		logger.Warnf("⚠️  --meta flag is in ALPHA state and not fully implemented. Do not use in production.")
-	}
 
 	// Create tagger for getting current version
-	tagger := git.NewTagger(repoDir, tagPrefix, dryRun)
+	tagger := git.NewTagger(repoDir, prefix, dryRun)
 	
 	// Check if any tags exist
-	hasTags, err := CheckForExistingTags(ctx, repoDir, tagPrefix)
+	hasTags, err := CheckForExistingTags(ctx, repoDir, prefix)
 	if err != nil {
 		return fmt.Errorf("failed to check for existing tags: %w", err)
 	}
 	
 	if !hasTags {
 		// No tags found - guide user to create first tag
-		return NoTagsError(tagPrefix, "1.0.0")
+		return NoTagsError(prefix, "1.0.0")
 	}
-	
+
+	// Guard: block numeric bumps while the latest tag is a prerelease (SemVer only).
+	// This prevents accidentally creating e.g. v1.3.0 when you're on v1.3.0-rc.1.
+	if scheme == "semver" && !force {
+		if latestTag, ltErr := tagger.LatestTag(ctx); ltErr == nil && latestTag != "" {
+			vStr := version.StripPrefix(latestTag, prefix)
+			if lv, parseErr := version.ParseSemVer(vStr); parseErr == nil && lv.IsPrerelease() {
+				return preReleaseGuardError(latestTag, lv)
+			}
+		}
+	}
+
 	// Get current version for interactive display
 	currentVersion, err := tagger.GetVersionWithDirtyCheck(ctx)
 	if err != nil {
@@ -349,6 +357,209 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 		logger.Success("Tag created: %s", tag)
 	}
 
+	return nil
+}
+
+// preReleaseGuardError returns a friendly error when the user tries to do a numeric
+// bump while the current latest tag is a prerelease.
+func preReleaseGuardError(tag string, v *version.Version) error {
+	base := fmt.Sprintf("%d.%d.%d", v.Major, v.Minor, v.Patch)
+	channel := strings.SplitN(v.Pre, ".", 2)[0]
+	return &ForgeError{
+		Title:       fmt.Sprintf("Current version %s is a prerelease", tag),
+		Description: "Numeric bumps (major/minor/patch) cannot be applied while on a prerelease tag.",
+		Suggestions: []string{
+			fmt.Sprintf("forge bump pre %-12s advance prerelease (%s → %s.next)", channel, v.Pre, channel),
+			"forge bump pre rc              promote to a different channel",
+			fmt.Sprintf("forge bump pre release         graduate to stable %s", base),
+			"forge bump ... --force         bypass this guard (not recommended)",
+		},
+	}
+}
+
+// BumpPre returns the 'forge bump pre' subcommand for managing prerelease versions.
+func BumpPre() *cli.Command {
+	return &cli.Command{
+		Name:      "pre",
+		Usage:     "Bump prerelease version (alpha/beta/rc) or graduate to stable",
+		ArgsUsage: "<channel>",
+		Description: "Manage the SemVer prerelease lifecycle.\n\n" +
+			"CHANNEL is the prerelease identifier (alpha, beta, rc, ...).\n" +
+			"Use the special channel \"release\" to graduate a prerelease to stable.\n\n" +
+			"Examples:\n" +
+			"  forge bump pre alpha --bump minor   # 1.2.3 → 1.3.0-alpha.1\n" +
+			"  forge bump pre alpha                # 1.3.0-alpha.1 → 1.3.0-alpha.2\n" +
+			"  forge bump pre rc                   # 1.3.0-alpha.2 → 1.3.0-rc.1\n" +
+			"  forge bump pre release              # 1.3.0-rc.1 → 1.3.0",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:    "bump",
+				Aliases: []string{"b"},
+				Usage:   "base version component to bump when starting from a stable tag (major|minor|patch)",
+				Value:   "",
+			},
+			&cli.StringFlag{
+				Name:  "prefix",
+				Usage: "tag prefix (e.g., v)",
+				Value: "",
+			},
+			&cli.StringFlag{
+				Name:  "repo-dir",
+				Usage: "repository directory",
+				Value: ".",
+			},
+			&cli.BoolFlag{
+				Name:  "push",
+				Usage: "push the tag to remote",
+			},
+			&cli.BoolFlag{
+				Name:  "dry-run",
+				Usage: "show what would be done without doing it",
+			},
+			&cli.BoolFlag{
+				Name:  "force",
+				Usage: "force tag creation even with uncommitted changes",
+			},
+			appFlag,
+		},
+		Action: preAction,
+	}
+}
+
+func preAction(ctx context.Context, cmd *cli.Command) error {
+	logger := log.FromContext(ctx)
+	out := output.FromContext(ctx)
+
+	channel := cmd.Args().First()
+	if channel == "" {
+		return fmt.Errorf(
+			"channel is required\n\n" +
+				"  Usage:  forge bump pre <channel>\n\n" +
+				"  Examples:\n" +
+				"    forge bump pre alpha --bump minor\n" +
+				"    forge bump pre rc\n" +
+				"    forge bump pre release",
+		)
+	}
+
+	repoDir := cmd.String("repo-dir")
+	dryRun := cmd.Bool("dry-run")
+	force := cmd.Bool("force")
+
+	if err := ValidateRequirements(ctx, repoDir); err != nil {
+		return err
+	}
+
+	if !dryRun && !force {
+		if err := CheckGitClean(ctx, repoDir, force); err != nil {
+			return err
+		}
+	}
+
+	cfg, err := config.LoadFromDir(repoDir)
+	if err != nil {
+		return fmt.Errorf("load config: %w", err)
+	}
+
+	appName := cmd.String("app")
+	appConfig, err := cfg.GetAppConfig(appName)
+	if err != nil {
+		return err
+	}
+
+	if appConfig.Version.Scheme != "semver" {
+		return fmt.Errorf("forge bump pre only supports semver scheme (configured scheme: %s)", appConfig.Version.Scheme)
+	}
+
+	// Use git.tag_prefix as the default so tag discovery and creation use the same prefix.
+	// --prefix CLI flag overrides it consistently for both operations.
+	prefix := cmd.String("prefix")
+	if prefix == "" {
+		prefix = appConfig.Git.TagPrefix
+	}
+
+	tagger := git.NewTagger(repoDir, prefix, dryRun)
+
+	nextVer, err := tagger.CalculatePreRelease(ctx, channel, cmd.String("bump"))
+	if err != nil {
+		return fmt.Errorf("calculate prerelease version: %w", err)
+	}
+
+	tag := version.WithPrefix(nextVer.String(), prefix)
+	cleanVersion := nextVer.String()
+
+	// Get current version for display.
+	currentVersion, err := tagger.GetVersionWithDirtyCheck(ctx)
+	if err != nil {
+		logger.Debugf("failed to detect current version: %v", err)
+		currentVersion = "none"
+	}
+
+	if dryRun {
+		logger.Infof("dry-run: %s → %s", currentVersion, tag)
+		return nil
+	}
+
+	// Interactive confirmation.
+	isInteractive := interactive.IsInteractive() && !out.IsJSON()
+	if isInteractive {
+		preview := fmt.Sprintf("Current: %s → Next: %s", currentVersion, tag)
+		confirmed, err := interactive.PromptConfirmation("Create this tag?", preview)
+		if err != nil {
+			return fmt.Errorf("confirmation: %w", err)
+		}
+		if !confirmed {
+			logger.Infof("Tag creation canceled")
+			return nil
+		}
+	}
+
+	// Update package.json if Node.js integration is enabled.
+	if appConfig.NodeJS.Enabled {
+		logger.Debugf("Node.js integration enabled, updating package.json")
+		nodeUpdater := nodejs.NewUpdater(repoDir, dryRun)
+		updated, err := nodeUpdater.Update(ctx, appConfig.NodeJS.PackagePath, cleanVersion)
+		if err != nil {
+			return fmt.Errorf("update package.json: %w", err)
+		}
+		if updated {
+			pkgPath := appConfig.NodeJS.PackagePath
+			if pkgPath == "" {
+				pkgPath = "package.json"
+			}
+			if err := tagger.CommitVersionUpdate(ctx, pkgPath, tag); err != nil {
+				return fmt.Errorf("commit package.json: %w", err)
+			}
+			logger.Infof("committed package.json version update")
+		}
+	}
+
+	if err := tagger.CreateTag(ctx, tag, fmt.Sprintf("forge: release %s", tag)); err != nil {
+		return fmt.Errorf("create tag: %w", err)
+	}
+
+	pushed := cmd.Bool("push")
+	if pushed {
+		if err := tagger.PushTag(ctx, tag); err != nil {
+			return fmt.Errorf("push tag: %w", err)
+		}
+	}
+
+	if out.IsJSON() {
+		result := output.TagResult{
+			Tag:     tag,
+			Pushed:  pushed,
+			Version: cleanVersion,
+			Message: fmt.Sprintf("Tag created%s", map[bool]string{true: " and pushed", false: ""}[pushed]),
+		}
+		return out.Print(result)
+	}
+
+	if pushed {
+		logger.Success("Tag created and pushed: %s", tag)
+	} else {
+		logger.Success("Tag created: %s", tag)
+	}
 	return nil
 }
 

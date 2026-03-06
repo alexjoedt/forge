@@ -79,6 +79,58 @@ func (t *Tagger) ParseLatestVersion(ctx context.Context, scheme version.Scheme) 
 	}
 }
 
+// LatestStableTag returns the most recent tag that is a stable (non-prerelease) SemVer version.
+// It iterates over all matching tags (git-sorted, newest first) and returns the first one
+// whose parsed version has no prerelease identifier.
+// Returns an empty string if no stable tags are found.
+func (t *Tagger) LatestStableTag(ctx context.Context) (string, error) {
+	logger := log.FromContext(ctx)
+
+	result := run.CmdInDir(ctx, t.repoDir, "git", "tag", "-l", t.prefix+"*", "--sort=-version:refname")
+	if !result.Success() {
+		// Mirror LatestTag: surface repository/environment issues as errors.
+		if result.ExitCode == 0 || strings.Contains(result.Stderr, "not a git repository") {
+			return "", fmt.Errorf("not a git repository or git not available: %s", result.Stderr)
+		}
+		// Empty output after a failed command is treated as "no tags yet".
+		if strings.TrimSpace(result.Stdout) == "" {
+			logger.Debugf("no tags found with prefix %s", t.prefix)
+			return "", nil
+		}
+	}
+
+	lines := strings.Split(strings.TrimSpace(result.Stdout), "\n")
+	for _, tag := range lines {
+		tag = strings.TrimSpace(tag)
+		if tag == "" {
+			continue
+		}
+		vStr := version.StripPrefix(tag, t.prefix)
+		v, err := version.ParseSemVer(vStr)
+		if err != nil {
+			continue // non-semver tag (e.g., calver), skip
+		}
+		if v.IsStable() {
+			return tag, nil
+		}
+	}
+	return "", nil
+}
+
+// ParseLatestStableVersion returns the parsed stable version from the latest stable tag.
+// Returns nil if no stable tags exist.
+func (t *Tagger) ParseLatestStableVersion(ctx context.Context) (*version.Version, error) {
+	tag, err := t.LatestStableTag(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if tag == "" {
+		return nil, nil
+	}
+	vStr := version.StripPrefix(tag, t.prefix)
+	return version.ParseSemVer(vStr)
+}
+
 // TagExists checks if a tag already exists.
 func (t *Tagger) TagExists(ctx context.Context, tag string) (bool, error) {
 	result := run.CmdInDir(ctx, t.repoDir, "git", "tag", "-l", tag)
@@ -250,35 +302,48 @@ func (t *Tagger) IsTagOnCurrentCommit(ctx context.Context, tag string) (bool, er
 // CalculateNextVersion calculates the next version without creating a tag.
 // This is useful when you need to know the version before making changes (e.g., updating package.json).
 func (t *Tagger) CalculateNextVersion(ctx context.Context, scheme version.Scheme, bump version.BumpType, calverFormat, pre, meta string) (*version.Version, error) {
-	// Get current version
-	current, err := t.ParseLatestVersion(ctx, scheme)
-	if err != nil {
-		return nil, fmt.Errorf("parse latest version: %w", err)
-	}
-
 	var next *version.Version
 
 	switch scheme {
 	case version.SchemeSemVer:
+		// Use the latest stable tag as base, skipping any prerelease tags.
+		current, err := t.ParseLatestStableVersion(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("parse latest stable version: %w", err)
+		}
 		if current == nil {
-			// No previous version, start at 0.1.0 or 1.0.0 depending on bump
+			// No stable tag found; fall back to the latest SemVer tag (may be prerelease).
+			latest, latestErr := t.ParseLatestVersion(ctx, version.SchemeSemVer)
+			if latestErr != nil {
+				return nil, fmt.Errorf("parse latest version: %w", latestErr)
+			}
+			if latest != nil {
+				// Graduate the prerelease to use its stable core as the bump base.
+				current = latest.Graduate()
+			}
+		}
+		if current == nil {
 			if bump == version.BumpMajor {
-				next = &version.Version{Scheme: version.SchemeSemVer, Major: 1, Minor: 0, Patch: 0}
+				next = &version.Version{Scheme: version.SchemeSemVer, Major: 1}
 			} else {
-				next = &version.Version{Scheme: version.SchemeSemVer, Major: 0, Minor: 1, Patch: 0}
+				next = &version.Version{Scheme: version.SchemeSemVer, Minor: 1}
 			}
 		} else {
 			next = current.BumpSemVer(bump)
 		}
 
 	case version.SchemeCalVer:
+		current, err := t.ParseLatestVersion(ctx, scheme)
+		if err != nil {
+			return nil, fmt.Errorf("parse latest version: %w", err)
+		}
 		next = version.NextCalVer(current, calverFormat, time.Now())
 
 	default:
 		return nil, fmt.Errorf("unknown version scheme: %s", scheme)
 	}
 
-	// Apply prerelease and metadata
+	// Apply prerelease and metadata.
 	if pre != "" {
 		next = next.WithPrerelease(pre)
 	}
@@ -321,28 +386,41 @@ func (t *Tagger) CommitVersionUpdate(ctx context.Context, filePath, version stri
 func (t *Tagger) CreateNextTag(ctx context.Context, scheme version.Scheme, bump version.BumpType, calverFormat, pre, meta string) (string, error) {
 	logger := log.FromContext(ctx)
 
-	// Get current version
-	current, err := t.ParseLatestVersion(ctx, scheme)
-	if err != nil {
-		return "", fmt.Errorf("parse latest version: %w", err)
-	}
-
 	var next *version.Version
 
 	switch scheme {
 	case version.SchemeSemVer:
+		// Use the latest stable tag as base, skipping any prerelease tags.
+		current, err := t.ParseLatestStableVersion(ctx)
+		if err != nil {
+			return "", fmt.Errorf("parse latest stable version: %w", err)
+		}
 		if current == nil {
-			// No previous version, start at 0.1.0 or 1.0.0 depending on bump
+			// No stable tag found; fall back to the latest SemVer tag (may be prerelease).
+			latest, latestErr := t.ParseLatestVersion(ctx, version.SchemeSemVer)
+			if latestErr != nil {
+				return "", fmt.Errorf("parse latest version: %w", latestErr)
+			}
+			if latest != nil {
+				// Graduate the prerelease to use its stable core as the bump base.
+				current = latest.Graduate()
+			}
+		}
+		if current == nil {
 			if bump == version.BumpMajor {
-				next = &version.Version{Scheme: version.SchemeSemVer, Major: 1, Minor: 0, Patch: 0}
+				next = &version.Version{Scheme: version.SchemeSemVer, Major: 1}
 			} else {
-				next = &version.Version{Scheme: version.SchemeSemVer, Major: 0, Minor: 1, Patch: 0}
+				next = &version.Version{Scheme: version.SchemeSemVer, Minor: 1}
 			}
 		} else {
 			next = current.BumpSemVer(bump)
 		}
 
 	case version.SchemeCalVer:
+		current, err := t.ParseLatestVersion(ctx, scheme)
+		if err != nil {
+			return "", fmt.Errorf("parse latest version: %w", err)
+		}
 		next = version.NextCalVer(current, calverFormat, time.Now())
 
 	default:
@@ -789,6 +867,68 @@ func parseHotfixSequence(tag, baseTag, suffix string) (int, error) {
 	}
 
 	var seqNum int
-	fmt.Sscanf(seqStr, "%d", &seqNum)
+	if _, err := fmt.Sscanf(seqStr, "%d", &seqNum); err != nil {
+		return 0, fmt.Errorf("invalid sequence number: %s", seqStr)
+	}
 	return seqNum, nil
+}
+
+// CalculatePreRelease computes the next prerelease version for a SemVer tag.
+//
+// channel is the prerelease identifier (e.g., "alpha", "beta", "rc").
+// Pass "release" to graduate the current prerelease to a stable version.
+// bumpType ("major", "minor", "patch") is required when the latest tag is stable
+// and channel is not "release".
+func (t *Tagger) CalculatePreRelease(ctx context.Context, channel, bumpType string) (*version.Version, error) {
+	// Get the overall latest tag (including any prerelease tags).
+	latest, err := t.LatestTag(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get latest tag: %w", err)
+	}
+
+	var current *version.Version
+	if latest != "" {
+		vStr := version.StripPrefix(latest, t.prefix)
+		current, err = version.ParseSemVer(vStr)
+		if err != nil {
+			return nil, fmt.Errorf("latest tag %q is not a valid SemVer version: %w", vStr, err)
+		}
+	}
+
+	// Graduation: produce the stable release by stripping the prerelease.
+	if channel == "release" {
+		if current == nil {
+			return nil, fmt.Errorf("no existing version found to graduate")
+		}
+		if current.IsStable() {
+			return nil, fmt.Errorf("current version %s is already a stable release; nothing to graduate", current)
+		}
+		return current.Graduate(), nil
+	}
+
+	// Prerelease from a stable (or absent) base: --bump is required.
+	if current == nil || current.IsStable() {
+		if bumpType == "" {
+			return nil, fmt.Errorf("current version is stable; use --bump major|minor|patch to set the prerelease base")
+		}
+		var base *version.Version
+		if current == nil {
+			base = &version.Version{Scheme: version.SchemeSemVer, Minor: 1}
+		} else {
+			switch version.BumpType(bumpType) {
+			case version.BumpMajor:
+				base = current.BumpSemVer(version.BumpMajor)
+			case version.BumpMinor:
+				base = current.BumpSemVer(version.BumpMinor)
+			case version.BumpPatch:
+				base = current.BumpSemVer(version.BumpPatch)
+			default:
+				return nil, fmt.Errorf("invalid bump type %q (must be major, minor, or patch)", bumpType)
+			}
+		}
+		return base.BumpPreRelease(channel)
+	}
+
+	// Current is a prerelease: increment or promote channel.
+	return current.BumpPreRelease(channel)
 }

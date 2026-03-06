@@ -614,3 +614,239 @@ func TestIncrementHotfixSequence(t *testing.T) {
 		})
 	}
 }
+
+// SemVer v2 spec compliance tests
+
+func TestValidatePrereleaseIdentifiers(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{"empty is valid", "", false},
+		{"single alpha", "alpha", false},
+		{"channel.number", "rc.1", false},
+		{"multi-part", "alpha.1.beta.2", false},
+		{"hyphenated", "pre-release.1", false},
+		{"large number", "rc.999", false},
+		{"empty identifier", "rc..1", true},
+		{"leading dot", ".rc", true},
+		{"trailing dot", "rc.", true},
+		{"underscore", "rc_1", true},
+		{"space", "rc 1", true},
+		{"leading zero numeric", "rc.01", true},
+		{"leading zero single segment", "01", true},
+		{"zero is ok", "rc.0", false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidatePrereleaseIdentifiers(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ValidatePrereleaseIdentifiers(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestParseSemVerValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		wantErr bool
+	}{
+		{"valid basic", "1.2.3", false},
+		{"valid with pre", "1.2.3-rc.1", false},
+		{"valid with meta", "1.2.3+build.001", false},
+		{"leading zero major", "01.2.3", true},
+		{"leading zero minor", "1.02.3", true},
+		{"leading zero patch", "1.2.03", true},
+		{"invalid pre underscore", "1.2.3-rc_1", true},
+		{"invalid pre leading zero", "1.2.3-rc.01", true},
+		{"empty pre identifier", "1.2.3-.rc", true},
+		{"invalid meta underscore", "1.2.3+build_1", true},
+		{"empty prerelease section", "1.2.3-", true},
+		{"empty metadata section", "1.2.3+", true},
+		{"empty prerelease with metadata", "1.2.3-+build.1", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseSemVer(tt.input)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseSemVer(%q) error = %v, wantErr %v", tt.input, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestCompare(t *testing.T) {
+	// Spec §11 example ordering:
+	// 1.0.0-alpha < 1.0.0-alpha.1 < 1.0.0-alpha.beta < 1.0.0-beta < 1.0.0-beta.2
+	// < 1.0.0-beta.11 < 1.0.0-rc.1 < 1.0.0
+	ordered := []string{
+		"1.0.0-alpha",
+		"1.0.0-alpha.1",
+		"1.0.0-alpha.beta",
+		"1.0.0-beta",
+		"1.0.0-beta.2",
+		"1.0.0-beta.11",
+		"1.0.0-rc.1",
+		"1.0.0",
+	}
+
+	for i := 0; i < len(ordered)-1; i++ {
+		a, err := ParseSemVer(ordered[i])
+		if err != nil {
+			t.Fatalf("ParseSemVer(%q) unexpected error: %v", ordered[i], err)
+		}
+		b, err := ParseSemVer(ordered[i+1])
+		if err != nil {
+			t.Fatalf("ParseSemVer(%q) unexpected error: %v", ordered[i+1], err)
+		}
+		if got := Compare(a, b); got != -1 {
+			t.Errorf("Compare(%q, %q) = %d, want -1", ordered[i], ordered[i+1], got)
+		}
+		if got := Compare(b, a); got != 1 {
+			t.Errorf("Compare(%q, %q) = %d, want 1", ordered[i+1], ordered[i], got)
+		}
+	}
+
+	// Equality
+	a, err := ParseSemVer("1.0.0")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.0.0", err)
+	}
+	b, err := ParseSemVer("1.0.0")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.0.0", err)
+	}
+	if got := Compare(a, b); got != 0 {
+		t.Errorf("Compare equal versions = %d, want 0", got)
+	}
+
+	// Build metadata ignored for precedence (spec §10)
+	c, err := ParseSemVer("1.0.0+build.1")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.0.0+build.1", err)
+	}
+	d, err := ParseSemVer("1.0.0+build.2")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.0.0+build.2", err)
+	}
+	if got := Compare(c, d); got != 0 {
+		t.Errorf("Compare versions differing only in metadata = %d, want 0", got)
+	}
+
+	// Numeric vs alphanumeric: numeric has lower precedence
+	e, err := ParseSemVer("1.0.0-1")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.0.0-1", err)
+	}
+	f, err := ParseSemVer("1.0.0-alpha")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.0.0-alpha", err)
+	}
+	if got := Compare(e, f); got != -1 {
+		t.Errorf("Compare numeric < alpha = %d, want -1", got)
+	}
+}
+
+func TestIsPrerelease(t *testing.T) {
+	stable, err := ParseSemVer("1.2.3")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.2.3", err)
+	}
+	pre, err := ParseSemVer("1.2.3-rc.1")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.2.3-rc.1", err)
+	}
+
+	if stable.IsPrerelease() {
+		t.Error("1.2.3 should not be a prerelease")
+	}
+	if !stable.IsStable() {
+		t.Error("1.2.3 should be stable")
+	}
+	if !pre.IsPrerelease() {
+		t.Error("1.2.3-rc.1 should be a prerelease")
+	}
+	if pre.IsStable() {
+		t.Error("1.2.3-rc.1 should not be stable")
+	}
+}
+
+func TestGraduate(t *testing.T) {
+	pre, err := ParseSemVer("2.0.0-rc.2")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "2.0.0-rc.2", err)
+	}
+	stable := pre.Graduate()
+	if stable.String() != "2.0.0" {
+		t.Errorf("Graduate() = %q, want %q", stable.String(), "2.0.0")
+	}
+	if stable.IsPrerelease() {
+		t.Error("graduated version should be stable")
+	}
+}
+
+func TestBumpPreRelease(t *testing.T) {
+	tests := []struct {
+		name    string
+		base    string
+		channel string
+		want    string
+		wantErr bool
+	}{
+		{
+			name:    "first alpha from stable",
+			base:    "1.2.3",
+			channel: "alpha",
+			want:    "1.2.3-alpha.1",
+		},
+		{
+			name:    "increment same channel",
+			base:    "1.2.3-alpha.1",
+			channel: "alpha",
+			want:    "1.2.3-alpha.2",
+		},
+		{
+			name:    "promote to rc",
+			base:    "1.2.3-alpha.3",
+			channel: "rc",
+			want:    "1.2.3-rc.1",
+		},
+		{
+			name:    "increment rc",
+			base:    "2.0.0-rc.1",
+			channel: "rc",
+			want:    "2.0.0-rc.2",
+		},
+		{
+			name:    "invalid channel with dot",
+			base:    "1.0.0",
+			channel: "rc.1",
+			wantErr: true,
+		},
+		{
+			name:    "invalid channel with underscore",
+			base:    "1.0.0",
+			channel: "my_channel",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			v, err := ParseSemVer(tt.base)
+			if err != nil {
+				t.Fatalf("ParseSemVer(%q) failed: %v", tt.base, err)
+			}
+			got, err := v.BumpPreRelease(tt.channel)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("BumpPreRelease(%q) error = %v, wantErr %v", tt.channel, err, tt.wantErr)
+				return
+			}
+			if err == nil && got.String() != tt.want {
+				t.Errorf("BumpPreRelease(%q) = %q, want %q", tt.channel, got.String(), tt.want)
+			}
+		})
+	}
+}
