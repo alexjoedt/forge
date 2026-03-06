@@ -529,7 +529,7 @@ type HotfixListOutput struct {
 	Count    int      `json:"count"`
 }
 
-//nolint:gocognit,nestif
+//nolint:gocognit,nestif // CLI handler has complex branching; keeping logic in one function is clearer
 func hotfixListAction(ctx context.Context, cmd *cli.Command) error {
 	out := output.FromContext(ctx)
 
