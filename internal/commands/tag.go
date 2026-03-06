@@ -548,7 +548,7 @@ func preAction(ctx context.Context, cmd *cli.Command) error {
 		result := output.TagResult{
 			Tag:     tag,
 			Pushed:  pushed,
-			Version: tag,
+			Version: cleanVersion,
 			Message: fmt.Sprintf("Tag created%s", map[bool]string{true: " and pushed", false: ""}[pushed]),
 		}
 		return out.Print(result)
