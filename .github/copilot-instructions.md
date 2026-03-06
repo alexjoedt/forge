@@ -20,7 +20,7 @@ Run tests for a specific package: `go test ./internal/version/...`
 | Package | Responsibility |
 |---|---|
 | `main` | Wires CLI app, injects logger + output manager into `context.Context` via `Before` hook |
-| `internal/commands` | One file per command: `tag.go` (bump), `changelog.go`, `hotfix.go`, `version.go`, `init.go`; `common.go` holds shared helpers and `ForgeError` |
+| `internal/commands` | One file per command: `tag.go` (bump), `changelog.go`, `hotfix.go`, `version.go`, `init.go`, `validate.go`, `retag.go`; `common.go` holds shared helpers and `ForgeError` |
 | `internal/config` | Loads `forge.yaml` / `.forge.yaml`; single-app and monorepo configs |
 | `internal/version` | Pure version math: `ParseSemVer`, `ParseCalVer`, `BumpSemVer`, `BumpCalVer` |
 | `internal/git` | `Tagger` struct — wraps `git tag` operations |
