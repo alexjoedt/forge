@@ -1,9 +1,11 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
+	"github.com/alexjoedt/forge/internal/run"
 	"github.com/alexjoedt/forge/internal/version"
 )
 
@@ -212,6 +214,180 @@ func TestParseHotfixSequence(t *testing.T) {
 			}
 			if !tt.wantErr && got != tt.wantSeq {
 				t.Errorf("parseHotfixSequence(%q, %q, %q) = %d, want %d", tt.tag, tt.baseTag, tt.suffix, got, tt.wantSeq)
+			}
+		})
+	}
+}
+
+// initTestRepo creates a temporary git repository with an initial empty commit.
+func initTestRepo(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	ctx := context.Background()
+	cmds := [][]string{
+		{"git", "init"},
+		{"git", "config", "user.email", "test@example.com"},
+		{"git", "config", "user.name", "Test User"},
+		{"git", "commit", "--allow-empty", "-m", "initial commit"},
+	}
+	for _, args := range cmds {
+		r := run.CmdInDir(ctx, dir, args[0], args[1:]...)
+		if !r.Success() {
+			t.Fatalf("repo setup %v failed: %s", args, r.Stderr)
+		}
+	}
+	return dir
+}
+
+// addAnnotatedTag creates an annotated tag in the test repo.
+func addAnnotatedTag(t *testing.T, dir, tag string) {
+	t.Helper()
+	ctx := context.Background()
+	// Add an empty commit so each tag sits on its own commit.
+	r := run.CmdInDir(ctx, dir, "git", "commit", "--allow-empty", "-m", "chore: bump "+tag)
+	if !r.Success() {
+		t.Fatalf("empty commit before tag %s failed: %s", tag, r.Stderr)
+	}
+	r = run.CmdInDir(ctx, dir, "git", "tag", "-a", tag, "-m", tag)
+	if !r.Success() {
+		t.Fatalf("create tag %s failed: %s", tag, r.Stderr)
+	}
+}
+
+func TestCalculatePreRelease(t *testing.T) {
+	tests := []struct {
+		name      string
+		// tags are applied in order before calling CalculatePreRelease.
+		tags      []string
+		prefix    string
+		channel   string
+		bumpType  string
+		wantVer   string
+		wantErr   bool
+	}{
+		{
+			name:     "no existing tags, bump minor, alpha channel",
+			tags:     nil,
+			prefix:   "v",
+			channel:  "alpha",
+			bumpType: "minor",
+			wantVer:  "0.1.0-alpha.1",
+		},
+		{
+			name:     "stable base, bump minor, alpha channel",
+			tags:     []string{"v1.0.0"},
+			prefix:   "v",
+			channel:  "alpha",
+			bumpType: "minor",
+			wantVer:  "1.1.0-alpha.1",
+		},
+		{
+			name:     "stable base, bump major, rc channel",
+			tags:     []string{"v1.0.0"},
+			prefix:   "v",
+			channel:  "rc",
+			bumpType: "major",
+			wantVer:  "2.0.0-rc.1",
+		},
+		{
+			name:     "stable base, bump patch, beta channel",
+			tags:     []string{"v1.2.3"},
+			prefix:   "v",
+			channel:  "beta",
+			bumpType: "patch",
+			wantVer:  "1.2.4-beta.1",
+		},
+		{
+			name:     "increment within same channel",
+			tags:     []string{"v1.0.0", "v1.1.0-alpha.1"},
+			prefix:   "v",
+			channel:  "alpha",
+			bumpType: "",
+			wantVer:  "1.1.0-alpha.2",
+		},
+		{
+			name:     "promote alpha to rc",
+			tags:     []string{"v1.0.0", "v1.1.0-alpha.2"},
+			prefix:   "v",
+			channel:  "rc",
+			bumpType: "",
+			wantVer:  "1.1.0-rc.1",
+		},
+		{
+			name:     "graduate rc to stable",
+			tags:     []string{"v1.0.0", "v1.1.0-rc.1"},
+			prefix:   "v",
+			channel:  "release",
+			bumpType: "",
+			wantVer:  "1.1.0",
+		},
+		{
+			name:     "graduate alpha to stable",
+			tags:     []string{"v1.0.0", "v1.1.0-alpha.3"},
+			prefix:   "v",
+			channel:  "release",
+			bumpType: "",
+			wantVer:  "1.1.0",
+		},
+		{
+			name:     "error: stable current without bumpType",
+			tags:     []string{"v1.0.0"},
+			prefix:   "v",
+			channel:  "alpha",
+			bumpType: "",
+			wantErr:  true,
+		},
+		{
+			name:     "error: invalid bumpType",
+			tags:     []string{"v1.0.0"},
+			prefix:   "v",
+			channel:  "alpha",
+			bumpType: "invalid",
+			wantErr:  true,
+		},
+		{
+			name:     "error: graduate stable version",
+			tags:     []string{"v1.0.0"},
+			prefix:   "v",
+			channel:  "release",
+			bumpType: "",
+			wantErr:  true,
+		},
+		{
+			name:     "error: graduate with no existing version",
+			tags:     nil,
+			prefix:   "v",
+			channel:  "release",
+			bumpType: "",
+			wantErr:  true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := initTestRepo(t)
+			for _, tag := range tt.tags {
+				addAnnotatedTag(t, dir, tag)
+			}
+
+			tagger := NewTagger(dir, tt.prefix, false)
+			got, err := tagger.CalculatePreRelease(t.Context(), tt.channel, tt.bumpType)
+
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("CalculatePreRelease(%q, %q) error = %v, wantErr %v", tt.channel, tt.bumpType, err, tt.wantErr)
+			}
+			if tt.wantErr {
+				return
+			}
+
+			gotStr := got.String()
+			if gotStr != tt.wantVer {
+				t.Errorf("CalculatePreRelease(%q, %q) = %q, want %q", tt.channel, tt.bumpType, gotStr, tt.wantVer)
+			}
+
+			// Ensure the result parses as valid SemVer.
+			if _, err := version.ParseSemVer(gotStr); err != nil {
+				t.Errorf("result %q is not valid SemVer: %v", gotStr, err)
 			}
 		})
 	}
