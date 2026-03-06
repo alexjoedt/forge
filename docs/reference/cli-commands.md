@@ -65,7 +65,7 @@ forge bump [flags]
 | `--dry-run` | | Preview without creating tag | `false` |
 | `--app` | | Target app (monorepo) | `defaultApp` |
 | `--repo-dir` | | Repository directory | `.` |
-| `--pre` | | *[ALPHA]* Prerelease identifier | |
+| `--pre` | | Prerelease suffix to append (prefer `forge bump pre`) | |
 | `--meta` | | *[ALPHA]* Build metadata | |
 
 **Examples:**
@@ -76,6 +76,37 @@ forge bump --bump minor --push         # Bump minor, push
 forge bump --initial 1.0.0 --push      # First tag
 forge bump --bump patch --dry-run      # Preview only
 forge bump --bump minor --app api      # Monorepo
+```
+
+### `forge bump pre`
+
+Manage the SemVer prerelease lifecycle. Bump prerelease versions, transition between channels, or graduate to stable.
+
+```bash
+forge bump pre <channel> [flags]
+```
+
+`<channel>` is the prerelease identifier: `alpha`, `beta`, `rc`, or any custom label. Use the special channel `release` to graduate a prerelease to a stable version.
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--bump` | `-b` | Base version component to bump when starting from stable (`major`, `minor`, `patch`) | |
+| `--prefix` | | Override tag prefix | from config |
+| `--push` | | Push tag to remote | `false` |
+| `--force` | | Skip git clean check | `false` |
+| `--dry-run` | | Preview without creating tag | `false` |
+| `--app` | | Target app (monorepo) | `defaultApp` |
+| `--repo-dir` | | Repository directory | `.` |
+
+**Examples:**
+
+```bash
+forge bump pre alpha --bump minor   # 1.2.3 → 1.3.0-alpha.1
+forge bump pre alpha                # 1.3.0-alpha.1 → 1.3.0-alpha.2
+forge bump pre rc                   # 1.3.0-alpha.2 → 1.3.0-rc.1
+forge bump pre release              # 1.3.0-rc.1 → 1.3.0
+forge bump pre rc --push            # Create and push
+forge bump pre beta --dry-run       # Preview only
 ```
 
 ---
@@ -245,6 +276,46 @@ Checks performed:
 - Git tag prefix is configured
 - Working directory state
 - Existing version tags
+
+---
+
+## `forge retag`
+
+Move an existing tag to a different commit. This is a destructive operation — the old tag is deleted and re-created at the target commit.
+
+```bash
+forge retag <tag> [<commit>] [flags]
+```
+
+| Argument | Description | Default |
+|----------|-------------|---------|
+| `<tag>` | The tag to move (required) | |
+| `<commit>` | Target commit hash, branch, or ref | `HEAD` |
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--yes` | `-y` | Skip confirmation prompt | `false` |
+| `--message` | `-m` | Annotation message for the moved tag | auto-generated |
+| `--push` | | Force-push the tag to remote | `false` |
+| `--dry-run` | | Preview without moving the tag | `false` |
+| `--prefix` | | Tag prefix override | from config |
+| `--app` | | Target app (monorepo) | `defaultApp` |
+| `--repo-dir` | | Repository directory | `.` |
+
+**Examples:**
+
+```bash
+forge retag v1.2.3                    # Move v1.2.3 to HEAD
+forge retag v1.2.3 abc1234             # Move to specific commit
+forge retag v1.2.3 --push              # Move and force-push
+forge retag v1.2.3 --dry-run           # Preview only
+forge retag v1.2.3 --yes               # Skip confirmation
+forge retag api/v1.2.3 --app api       # Monorepo
+```
+
+::: warning
+Moving a tag rewrites history for anyone who has fetched the old tag. Use `--push` with care, especially for published releases.
+:::
 
 ---
 

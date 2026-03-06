@@ -16,7 +16,7 @@ I built this for my personal projects to handle versioning without the hassle.
 - **Changelog Generation**: Parses conventional commits
 - **Interactive CLI**: Quick bumps with Bubble Tea UI
 
-> **⚠️ ALPHA Features**: The `pre` (prerelease) and `meta` (build metadata) configuration options are in early alpha state and not fully implemented. Do not use these in production environments.
+> **⚠️ ALPHA Features**: The `meta` (build metadata) configuration option is in early alpha state and not fully implemented. Do not use in production environments. The `pre` (prerelease) feature is available via `forge bump pre`.
 
 ## Quick Start
 
@@ -32,12 +32,20 @@ forge bump
 
 # Or direct
 forge bump minor --push
+
+# Create prerelease tag (rc channel)
+forge bump pre rc --bump minor
+
+# Move a tag to a different commit
+forge retag v1.2.3
 ```
 
 ## Core Commands
 
 ```bash
 forge bump [major|minor|patch]    # Create version tag
+forge bump pre <channel>          # Manage prerelease lifecycle
+forge retag <tag> [<commit>]      # Move an existing tag to a different commit
 forge hotfix create <tag>         # Create hotfix branch from release
 forge hotfix bump                 # Bump hotfix version
 forge hotfix status               # Show hotfix branch status
@@ -95,6 +103,32 @@ forge bump minor --push
 
 # Generate changelog
 forge changelog --output CHANGELOG.md
+```
+
+### Prerelease Workflow
+
+```bash
+# Start a release candidate from v1.5.0
+forge bump pre rc --bump minor    # v1.5.0 → v1.6.0-rc.1
+
+# Increment the prerelease number
+forge bump pre rc                 # v1.6.0-rc.1 → v1.6.0-rc.2
+
+# Graduate to stable release
+forge bump pre release            # v1.6.0-rc.2 → v1.6.0
+```
+
+### Re-tagging
+
+```bash
+# Move a tag to HEAD
+forge retag v1.2.3
+
+# Move a tag to a specific commit
+forge retag v1.2.3 abc1234
+
+# Move and push
+forge retag v1.2.3 --push
 ```
 
 ### Hotfix Workflow

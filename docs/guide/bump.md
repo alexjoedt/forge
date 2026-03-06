@@ -35,7 +35,7 @@ forge tag --bump minor
 | `--dry-run` | | Show what would happen without creating a tag | `false` |
 | `--app` | | Target app in a monorepo | from `defaultApp` |
 | `--repo-dir` | | Path to the repository directory | `.` |
-| `--pre` | | *[ALPHA]* Prerelease identifier | |
+| `--pre` | | Prerelease suffix to append (prefer `forge bump pre` for lifecycle management) | |
 | `--meta` | | *[ALPHA]* Build metadata | |
 
 ## Creating the First Tag
@@ -120,6 +120,52 @@ forge bump --bump patch --app worker
 ```
 
 If `defaultApp` is configured, omitting `--app` targets the default.
+
+## Prerelease Versions
+
+For full prerelease lifecycle management, use the `pre` subcommand:
+
+```bash
+forge bump pre <channel> [flags]
+```
+
+The `<channel>` argument specifies the prerelease identifier (`alpha`, `beta`, `rc`, etc.). Use the special channel `release` to graduate a prerelease to a stable version.
+
+### Lifecycle Example
+
+```bash
+# Start an alpha from v1.2.3
+forge bump pre alpha --bump minor   # v1.2.3 → v1.3.0-alpha.1
+
+# Increment the alpha
+forge bump pre alpha                # v1.3.0-alpha.1 → v1.3.0-alpha.2
+
+# Promote to release candidate
+forge bump pre rc                   # v1.3.0-alpha.2 → v1.3.0-rc.1
+
+# Graduate to stable release
+forge bump pre release              # v1.3.0-rc.1 → v1.3.0
+```
+
+### Flags
+
+| Flag | Short | Description | Default |
+|------|-------|-------------|---------|
+| `--bump` | `-b` | Base version component to bump when starting from a stable tag (`major`, `minor`, `patch`) | |
+| `--prefix` | | Override tag prefix | from config |
+| `--push` | | Push the tag to remote | `false` |
+| `--force` | | Skip git clean check | `false` |
+| `--dry-run` | | Preview without creating tag | `false` |
+| `--app` | | Target app (monorepo) | from `defaultApp` |
+| `--repo-dir` | | Repository directory | `.` |
+
+::: tip
+The `--bump` flag is only needed when starting a prerelease from a stable version. Once on a prerelease track, Forge automatically increments the prerelease number or transitions between channels.
+:::
+
+::: warning Prerelease Guard
+While the latest tag is a prerelease, Forge blocks regular `forge bump` operations (unless `--force` is used). Use `forge bump pre release` to graduate back to a stable version first.
+:::
 
 ## Node.js Integration
 

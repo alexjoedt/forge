@@ -107,6 +107,7 @@ forge changelog --output CHANGELOG.md
 |------|-------|
 | Understand SemVer vs CalVer | [Version Schemes →](./version-schemes) |
 | Learn the bump command in depth | [Bump Command →](./bump) |
+| Manage prerelease versions | [Bump Command → Prerelease](./bump#prerelease-versions) |
 | Set up a hotfix workflow | [Hotfix Workflow →](./hotfix) |
 | Configure a monorepo | [Monorepo Setup →](./monorepo) |
 | Full config reference | [Configuration →](../reference/configuration) |
