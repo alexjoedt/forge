@@ -122,7 +122,7 @@ func (t *Tagger) LatestStableTag(ctx context.Context) (string, error) {
 // ParseLatestStableVersion returns the parsed stable version from the latest stable tag.
 // Returns nil if no stable tags exist.
 //
-//nolint:nilnil
+//nolint:nilnil // (nil, nil) intentionally signals "no stable tag" distinct from an error
 func (t *Tagger) ParseLatestStableVersion(ctx context.Context) (*version.Version, error) {
 	tag, err := t.LatestStableTag(ctx)
 	if err != nil {
