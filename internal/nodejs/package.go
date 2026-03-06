@@ -106,7 +106,7 @@ func (u *Updater) UpdateVersion(ctx context.Context, packagePath, newVersion str
 	// We'll still try to update it using regex
 	var pkg map[string]interface{}
 	var oldVersion string
-	
+
 	// Create a version without comments for validation
 	contentNoComments := stripJSONComments(content)
 	if err := json.Unmarshal([]byte(contentNoComments), &pkg); err != nil {
@@ -146,7 +146,7 @@ func (u *Updater) UpdateVersion(ctx context.Context, packagePath, newVersion str
 		if len(parts) != 5 {
 			return match
 		}
-		// parts[1] = "version": 
+		// parts[1] = "version":
 		// parts[2] = opening quote
 		// parts[3] = old version
 		// parts[4] = closing quote
@@ -159,7 +159,7 @@ func (u *Updater) UpdateVersion(ctx context.Context, packagePath, newVersion str
 	}
 
 	// Write back the modified content
-	if err := os.WriteFile(packagePath, []byte(newContent), 0644); err != nil {
+	if err := os.WriteFile(packagePath, []byte(newContent), 0o600); err != nil {
 		return false, fmt.Errorf("write package.json: %w", err)
 	}
 
@@ -176,37 +176,37 @@ func stripJSONComments(content string) string {
 	inSingleLineComment := false
 	inMultiLineComment := false
 	escape := false
-	
+
 	chars := []rune(content)
 	for i := 0; i < len(chars); i++ {
 		ch := chars[i]
-		
+
 		// Handle escape sequences in strings
 		if inString && escape {
 			result.WriteRune(ch)
 			escape = false
 			continue
 		}
-		
+
 		if inString && ch == '\\' {
 			result.WriteRune(ch)
 			escape = true
 			continue
 		}
-		
+
 		// Toggle string state
 		if ch == '"' && !inSingleLineComment && !inMultiLineComment {
 			inString = !inString
 			result.WriteRune(ch)
 			continue
 		}
-		
+
 		// If we're in a string, just write the character
 		if inString {
 			result.WriteRune(ch)
 			continue
 		}
-		
+
 		// Handle end of single-line comment
 		if inSingleLineComment {
 			if ch == '\n' {
@@ -216,7 +216,7 @@ func stripJSONComments(content string) string {
 			// Skip characters in comment
 			continue
 		}
-		
+
 		// Handle end of multi-line comment
 		if inMultiLineComment {
 			if ch == '*' && i+1 < len(chars) && chars[i+1] == '/' {
@@ -226,7 +226,7 @@ func stripJSONComments(content string) string {
 			// Skip characters in comment
 			continue
 		}
-		
+
 		// Check for start of comments
 		if ch == '/' && i+1 < len(chars) {
 			next := chars[i+1]
@@ -241,11 +241,11 @@ func stripJSONComments(content string) string {
 				continue
 			}
 		}
-		
+
 		// Regular character, not in comment or string
 		result.WriteRune(ch)
 	}
-	
+
 	return result.String()
 }
 

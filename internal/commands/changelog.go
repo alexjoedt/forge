@@ -11,7 +11,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-// Changelog returns the changelog command
+// Changelog returns the changelog command.
 func Changelog() *cli.Command {
 	return &cli.Command{
 		Name:  "changelog",
@@ -78,6 +78,7 @@ Examples:
 	}
 }
 
+//nolint:funlen
 func changelogAction(ctx context.Context, cmd *cli.Command) error {
 	logger := log.FromContext(ctx)
 	repoDir := "."
@@ -97,7 +98,7 @@ func changelogAction(ctx context.Context, cmd *cli.Command) error {
 	// Get app config
 	appConfig, err := cfg.GetAppConfig(app)
 	if err != nil {
-		return err
+		return fmt.Errorf("get app config: %w", err)
 	}
 
 	// Get tags
@@ -106,9 +107,9 @@ func changelogAction(ctx context.Context, cmd *cli.Command) error {
 	format := cmd.String("format")
 	output := cmd.String("output")
 
-	// If no from tag specified, use latest tag
+	// If no from tag specified, use latest tag.
 	if from == "" {
-		// TODO: Get latest tag from git
+		//nolint:godox // TODO: Get latest tag from git
 		logger.Warnf("No --from tag specified, using all commits up to HEAD")
 	}
 
@@ -128,7 +129,7 @@ func changelogAction(ctx context.Context, cmd *cli.Command) error {
 	// Parse commits
 	logger.Infof("Parsing git commits...")
 	parser := changelog.NewParser(repoDir, appConfig.Git.TagPrefix)
-	
+
 	cl, err := parser.Parse(ctx, from, to)
 	if err != nil {
 		return fmt.Errorf("parse changelog: %w", err)
@@ -144,25 +145,25 @@ func changelogAction(ctx context.Context, cmd *cli.Command) error {
 	// Format changelog
 	var formatted string
 	switch changelogFormat {
-	case "markdown":
+	case changelog.MarkdownFormat:
 		formatted = changelog.FormatMarkdown(cl)
-	case "json":
+	case changelog.JSONFormat:
 		formatted, err = changelog.FormatJSON(cl)
 		if err != nil {
 			return fmt.Errorf("format JSON: %w", err)
 		}
-	case "plain":
+	case changelog.PlainFormat:
 		formatted = changelog.FormatPlain(cl)
 	}
 
 	// Output
 	if output != "" {
-		if err := os.WriteFile(output, []byte(formatted), 0644); err != nil {
+		if err := os.WriteFile(output, []byte(formatted), 0o600); err != nil {
 			return fmt.Errorf("write file: %w", err)
 		}
 		logger.Success("Changelog written to %s", output)
 	} else {
-		fmt.Println(formatted)
+		fmt.Fprintln(os.Stdout, formatted)
 	}
 
 	return nil

@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/alexjoedt/forge/internal/config"
 	"github.com/alexjoedt/forge/internal/git"
@@ -54,6 +55,7 @@ func Retag() *cli.Command {
 	}
 }
 
+//nolint:gocognit,nestif // CLI handler requires branching and complexity; splitting would hurt readability
 func retagAction(ctx context.Context, cmd *cli.Command) error {
 	logger := log.FromContext(ctx)
 	out := output.FromContext(ctx)
@@ -95,7 +97,7 @@ func retagAction(ctx context.Context, cmd *cli.Command) error {
 
 	appConfig, err := cfg.GetAppConfig(appName)
 	if err != nil {
-		return err
+		return fmt.Errorf("get app config: %w", err)
 	}
 
 	if prefix == "" {
@@ -196,14 +198,20 @@ func retagAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if dryRun {
-		fmt.Printf("dry-run: would move tag %s\n  from  %s\n  to    %s\n", tag, fromCommit[:7], toCommit[:7])
+		fmt.Fprintf(
+			os.Stdout,
+			"dry-run: would move tag %s\n  from  %s\n  to    %s\n",
+			tag,
+			fromCommit[:7],
+			toCommit[:7],
+		)
 		if push {
-			fmt.Printf("dry-run: would force-push tag %s to origin\n", tag)
+			fmt.Fprintf(os.Stdout, "dry-run: would force-push tag %s to origin\n", tag)
 		}
 	} else {
-		fmt.Printf("moved tag %s\n  from  %s\n  to    %s\n", tag, fromCommit[:7], toCommit[:7])
+		fmt.Fprintf(os.Stdout, "moved tag %s\n  from  %s\n  to    %s\n", tag, fromCommit[:7], toCommit[:7])
 		if push {
-			fmt.Printf("force-pushed tag %s to origin\n", tag)
+			fmt.Fprintf(os.Stdout, "force-pushed tag %s to origin\n", tag)
 		}
 	}
 

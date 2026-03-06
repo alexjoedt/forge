@@ -28,6 +28,7 @@ func Validate() *cli.Command {
 	}
 }
 
+//nolint:gocognit,nestif // validateAction orchestrates multiple validation checks; keeping logic in one place aids CLI flow clarity
 func validateAction(ctx context.Context, cmd *cli.Command) error {
 	logger := log.FromContext(ctx)
 	out := output.FromContext(ctx)
@@ -53,17 +54,17 @@ func validateAction(ctx context.Context, cmd *cli.Command) error {
 	cfg, err := config.LoadFromDir(repoDir)
 	if err != nil {
 		issues = append(issues, fmt.Sprintf("Failed to load forge.yaml: %v", err))
-		
+
 		// Early exit if config can't be loaded
 		if out.IsJSON() {
-			result := map[string]interface{}{
+			result := map[string]any{
 				"valid":    false,
 				"issues":   issues,
 				"warnings": warnings,
 			}
 			return out.Print(result)
 		}
-		
+
 		logger.Errorf("Validation failed!")
 		for _, issue := range issues {
 			logger.Errorf("  ✗ %s", issue)
@@ -74,9 +75,9 @@ func validateAction(ctx context.Context, cmd *cli.Command) error {
 
 	// Validate app configuration
 	appName := cmd.String("app")
-	appConfig, err := cfg.GetAppConfig(appName)
-	if err != nil {
-		issues = append(issues, fmt.Sprintf("Failed to get app config: %v", err))
+	appConfig, appErr := cfg.GetAppConfig(appName)
+	if appErr != nil {
+		issues = append(issues, fmt.Sprintf("Failed to get app config: %v", appErr))
 	} else {
 		logger.Debugf("✓ App configuration found")
 
@@ -104,8 +105,8 @@ func validateAction(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		// Check for existing tags
-		tagger := git.NewTagger(repoDir, appConfig.Git.TagPrefix, false)
-		tags, err := tagger.ListAllTags(ctx)
+		appTagger := git.NewTagger(repoDir, appConfig.Git.TagPrefix, false)
+		tags, err := appTagger.ListAllTags(ctx)
 		if err != nil {
 			warnings = append(warnings, fmt.Sprintf("Failed to list tags: %v", err))
 		} else if len(tags) == 0 {
@@ -115,7 +116,7 @@ func validateAction(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		// Check working directory state
-		isDirty, err := tagger.HasUncommittedChanges(ctx)
+		isDirty, err := appTagger.HasUncommittedChanges(ctx)
 		if err != nil {
 			warnings = append(warnings, fmt.Sprintf("Failed to check working tree: %v", err))
 		} else if isDirty {
@@ -127,7 +128,7 @@ func validateAction(ctx context.Context, cmd *cli.Command) error {
 
 	// Output results
 	if out.IsJSON() {
-		result := map[string]interface{}{
+		result := map[string]any{
 			"valid":    len(issues) == 0,
 			"issues":   issues,
 			"warnings": warnings,

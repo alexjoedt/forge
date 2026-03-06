@@ -56,6 +56,8 @@ func (t *Tagger) LatestTag(ctx context.Context) (string, error) {
 }
 
 // ParseLatestVersion returns the parsed version of the latest tag, or nil if no tag exists.
+//
+//nolint:nilnil // (nil, nil) represents "no existing tag"; callers rely on this sentinel instead of an error
 func (t *Tagger) ParseLatestVersion(ctx context.Context, scheme version.Scheme) (*version.Version, error) {
 	tag, err := t.LatestTag(ctx)
 	if err != nil {
@@ -119,6 +121,8 @@ func (t *Tagger) LatestStableTag(ctx context.Context) (string, error) {
 
 // ParseLatestStableVersion returns the parsed stable version from the latest stable tag.
 // Returns nil if no stable tags exist.
+//
+//nolint:nilnil // (nil, nil) intentionally signals "no stable tag" distinct from an error
 func (t *Tagger) ParseLatestStableVersion(ctx context.Context) (*version.Version, error) {
 	tag, err := t.LatestStableTag(ctx)
 	if err != nil {
@@ -301,7 +305,12 @@ func (t *Tagger) IsTagOnCurrentCommit(ctx context.Context, tag string) (bool, er
 
 // CalculateNextVersion calculates the next version without creating a tag.
 // This is useful when you need to know the version before making changes (e.g., updating package.json).
-func (t *Tagger) CalculateNextVersion(ctx context.Context, scheme version.Scheme, bump version.BumpType, calverFormat, pre, meta string) (*version.Version, error) {
+func (t *Tagger) CalculateNextVersion(
+	ctx context.Context,
+	scheme version.Scheme,
+	bump version.BumpType,
+	calverFormat, pre, meta string,
+) (*version.Version, error) {
 	var next *version.Version
 
 	switch scheme {
@@ -383,7 +392,12 @@ func (t *Tagger) CommitVersionUpdate(ctx context.Context, filePath, version stri
 
 // CreateNextTag generates the next tag based on the scheme and creates it.
 // For semver, bump is required. For calver, the current date is used.
-func (t *Tagger) CreateNextTag(ctx context.Context, scheme version.Scheme, bump version.BumpType, calverFormat, pre, meta string) (string, error) {
+func (t *Tagger) CreateNextTag(
+	ctx context.Context,
+	scheme version.Scheme,
+	bump version.BumpType,
+	calverFormat, pre, meta string,
+) (string, error) {
 	logger := log.FromContext(ctx)
 
 	var next *version.Version
@@ -468,7 +482,7 @@ func (t *Tagger) GetVersionWithDirtyCheck(ctx context.Context) (string, error) {
 	// If no tags exist, return dev version
 	if tag == "" {
 		logger.Debugf("no tags found, using dev version")
-		return fmt.Sprintf("0.0.0-dev-%s", shortCommit), nil
+		return "0.0.0-dev-" + shortCommit, nil
 	}
 
 	// Strip prefix from tag to get version
@@ -592,8 +606,8 @@ func (t *Tagger) GetTagInfo(ctx context.Context, tagName string) (*TagInfo, erro
 
 	// Try multiple variations of the tag name to handle prefix auto-detection
 	tagsToTry := []string{
-		tagName,                    // Exact name as provided
-		t.prefix + tagName,         // With configured prefix
+		tagName,            // Exact name as provided
+		t.prefix + tagName, // With configured prefix
 	}
 
 	// Remove duplicates (if tagName already has prefix)
@@ -801,7 +815,11 @@ func ValidateHotfixBaseTag(ctx context.Context, repoDir, tag string) error {
 	if version.IsHotfixVersion(tag) {
 		base, _, _, _ := version.ParseHotfixVersion(tag)
 		if base != nil {
-			return fmt.Errorf("cannot create hotfix from hotfix version %q\nUse the base version instead: %s", tag, base.String())
+			return fmt.Errorf(
+				"cannot create hotfix from hotfix version %q\nUse the base version instead: %s",
+				tag,
+				base.String(),
+			)
 		}
 		return fmt.Errorf("cannot create hotfix from hotfix version %q", tag)
 	}
