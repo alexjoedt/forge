@@ -84,9 +84,17 @@ func (t *Tagger) ParseLatestVersion(ctx context.Context, scheme version.Scheme) 
 // whose parsed version has no prerelease identifier.
 // Returns an empty string if no stable tags are found.
 func (t *Tagger) LatestStableTag(ctx context.Context) (string, error) {
+	logger := log.FromContext(ctx)
+
 	result := run.CmdInDir(ctx, t.repoDir, "git", "tag", "-l", t.prefix+"*", "--sort=-version:refname")
 	if !result.Success() {
-		if result.Stdout == "" {
+		// Mirror LatestTag: surface repository/environment issues as errors.
+		if result.ExitCode == 0 || strings.Contains(result.Stderr, "not a git repository") {
+			return "", fmt.Errorf("not a git repository or git not available: %s", result.Stderr)
+		}
+		// Empty output after a failed command is treated as "no tags yet".
+		if strings.TrimSpace(result.Stdout) == "" {
+			logger.Debugf("no tags found with prefix %s", t.prefix)
 			return "", nil
 		}
 	}
