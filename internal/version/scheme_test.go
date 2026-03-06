@@ -664,6 +664,9 @@ func TestParseSemVerValidation(t *testing.T) {
 		{"invalid pre leading zero", "1.2.3-rc.01", true},
 		{"empty pre identifier", "1.2.3-.rc", true},
 		{"invalid meta underscore", "1.2.3+build_1", true},
+		{"empty prerelease section", "1.2.3-", true},
+		{"empty metadata section", "1.2.3+", true},
+		{"empty prerelease with metadata", "1.2.3-+build.1", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
