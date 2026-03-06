@@ -29,9 +29,10 @@ func New(verbose bool) *Logger {
 	}
 }
 
-// Setup reinitializes the DefaultLogger with the given verbosity.
+// Setup configures the DefaultLogger with the given verbosity without
+// reassigning the global logger instance.
 func Setup(verbose bool) {
-	DefaultLogger = New(verbose)
+	DefaultLogger.verbose = verbose
 }
 
 // Verbosef logs a formatted message when verbose mode is enabled.
