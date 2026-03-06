@@ -57,7 +57,7 @@ func (t *Tagger) LatestTag(ctx context.Context) (string, error) {
 
 // ParseLatestVersion returns the parsed version of the latest tag, or nil if no tag exists.
 //
-//nolint:nilnil
+//nolint:nilnil // (nil, nil) represents "no existing tag"; callers rely on this sentinel instead of an error
 func (t *Tagger) ParseLatestVersion(ctx context.Context, scheme version.Scheme) (*version.Version, error) {
 	tag, err := t.LatestTag(ctx)
 	if err != nil {
