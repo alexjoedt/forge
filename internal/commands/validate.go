@@ -28,7 +28,7 @@ func Validate() *cli.Command {
 	}
 }
 
-//nolint:gocognit,nestif
+//nolint:gocognit,nestif // validateAction orchestrates multiple validation checks; keeping logic in one place aids CLI flow clarity
 func validateAction(ctx context.Context, cmd *cli.Command) error {
 	logger := log.FromContext(ctx)
 	out := output.FromContext(ctx)
