@@ -691,8 +691,14 @@ func TestCompare(t *testing.T) {
 	}
 
 	for i := 0; i < len(ordered)-1; i++ {
-		a, _ := ParseSemVer(ordered[i])
-		b, _ := ParseSemVer(ordered[i+1])
+		a, err := ParseSemVer(ordered[i])
+		if err != nil {
+			t.Fatalf("ParseSemVer(%q) unexpected error: %v", ordered[i], err)
+		}
+		b, err := ParseSemVer(ordered[i+1])
+		if err != nil {
+			t.Fatalf("ParseSemVer(%q) unexpected error: %v", ordered[i+1], err)
+		}
 		if got := Compare(a, b); got != -1 {
 			t.Errorf("Compare(%q, %q) = %d, want -1", ordered[i], ordered[i+1], got)
 		}
@@ -702,30 +708,54 @@ func TestCompare(t *testing.T) {
 	}
 
 	// Equality
-	a, _ := ParseSemVer("1.0.0")
-	b, _ := ParseSemVer("1.0.0")
+	a, err := ParseSemVer("1.0.0")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.0.0", err)
+	}
+	b, err := ParseSemVer("1.0.0")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.0.0", err)
+	}
 	if got := Compare(a, b); got != 0 {
 		t.Errorf("Compare equal versions = %d, want 0", got)
 	}
 
 	// Build metadata ignored for precedence (spec §10)
-	c, _ := ParseSemVer("1.0.0+build.1")
-	d, _ := ParseSemVer("1.0.0+build.2")
+	c, err := ParseSemVer("1.0.0+build.1")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.0.0+build.1", err)
+	}
+	d, err := ParseSemVer("1.0.0+build.2")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.0.0+build.2", err)
+	}
 	if got := Compare(c, d); got != 0 {
 		t.Errorf("Compare versions differing only in metadata = %d, want 0", got)
 	}
 
 	// Numeric vs alphanumeric: numeric has lower precedence
-	e, _ := ParseSemVer("1.0.0-1")
-	f, _ := ParseSemVer("1.0.0-alpha")
+	e, err := ParseSemVer("1.0.0-1")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.0.0-1", err)
+	}
+	f, err := ParseSemVer("1.0.0-alpha")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.0.0-alpha", err)
+	}
 	if got := Compare(e, f); got != -1 {
 		t.Errorf("Compare numeric < alpha = %d, want -1", got)
 	}
 }
 
 func TestIsPrerelease(t *testing.T) {
-	stable, _ := ParseSemVer("1.2.3")
-	pre, _ := ParseSemVer("1.2.3-rc.1")
+	stable, err := ParseSemVer("1.2.3")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.2.3", err)
+	}
+	pre, err := ParseSemVer("1.2.3-rc.1")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "1.2.3-rc.1", err)
+	}
 
 	if stable.IsPrerelease() {
 		t.Error("1.2.3 should not be a prerelease")
@@ -742,7 +772,10 @@ func TestIsPrerelease(t *testing.T) {
 }
 
 func TestGraduate(t *testing.T) {
-	pre, _ := ParseSemVer("2.0.0-rc.2")
+	pre, err := ParseSemVer("2.0.0-rc.2")
+	if err != nil {
+		t.Fatalf("ParseSemVer(%q) unexpected error: %v", "2.0.0-rc.2", err)
+	}
 	stable := pre.Graduate()
 	if stable.String() != "2.0.0" {
 		t.Errorf("Graduate() = %q, want %q", stable.String(), "2.0.0")
