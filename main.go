@@ -77,8 +77,6 @@ func main() {
 			commands.Init(),
 			commands.Bump(),
 			commands.Hotfix(),
-			commands.Build(),
-			commands.Docker(),
 			commands.Version(),
 			commands.Changelog(),
 			commands.Validate(),

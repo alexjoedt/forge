@@ -20,8 +20,8 @@ type Config struct {
 // AppConfig represents the forge.yaml configuration file structure.
 type AppConfig struct {
 	Version VersionConfig `yaml:"version"`
-	Build   BuildConfig   `yaml:"build"`
-	Docker  DockerConfig  `yaml:"docker"`
+	Build   BuildConfig   `yaml:"-"`
+	Docker  DockerConfig  `yaml:"-"`
 	Git     GitConfig     `yaml:"git"`
 	NodeJS  NodeJSConfig  `yaml:"nodejs"`
 }
@@ -159,11 +159,6 @@ func (ac *AppConfig) Validate() error {
 			"        Sequence numbers are auto-incremented for same-period releases")
 	}
 
-	// Warn if both repository and repositories are set
-	if ac.Docker.Repository != "" && len(ac.Docker.Repositories) > 0 {
-		log.DefaultLogger.Warnf("both 'docker.repository' and 'docker.repositories' are set in forge.yaml - 'docker.repository' will be ignored, only 'docker.repositories' will be used")
-	}
-
 	return nil
 }
 
@@ -176,28 +171,6 @@ func Default() *AppConfig {
 			CalVerFormat: "2006.01.02",
 			Pre:          "",
 			Meta:         "",
-		},
-		Build: BuildConfig{
-			Name:     "forge",
-			MainPath: "./cmd/main.go",
-			Targets: []string{
-				"linux/amd64",
-				"linux/arm64",
-				"darwin/amd64",
-				"darwin/arm64",
-				"windows/amd64",
-			},
-			LDFlags:   "-s -w -X main.version={{ .Version }}",
-			OutputDir: "dist",
-			Binaries:  []Binary{},
-		},
-		Docker: DockerConfig{
-			Enabled:    true,
-			Repository: "ghcr.io/USER/forge",
-			Dockerfile: "./Dockerfile",
-			Tags:       []string{"{{ .Version }}", "latest"},
-			Platforms:  []string{"linux/amd64", "linux/arm64"},
-			BuildArgs:  make(map[string]string),
 		},
 		Git: GitConfig{
 			TagPrefix:     "v",
@@ -215,19 +188,12 @@ func DefaultMulti() *Config {
 	apiConfig := Default()
 	apiConfig.Version.Prefix = "v"
 	apiConfig.Git.TagPrefix = "api/v"
-	apiConfig.Build.Name = "api"
-	apiConfig.Build.MainPath = "./cmd/api/main.go"
-	apiConfig.Docker.Repository = "ghcr.io/USER/api"
 
 	workerConfig := Default()
 	workerConfig.Version.Scheme = "calver"
 	workerConfig.Version.CalVerFormat = "2006.WW"
 	workerConfig.Version.Prefix = "v"
 	workerConfig.Git.TagPrefix = "worker/v"
-	workerConfig.Build.Name = "worker"
-	workerConfig.Build.MainPath = "./cmd/worker/main.go"
-	workerConfig.Build.Targets = []string{"linux/amd64", "linux/arm64"}
-	workerConfig.Docker.Repository = "ghcr.io/USER/worker"
 
 	return &Config{
 		DefaultApp: "api",
@@ -279,10 +245,6 @@ func Load(path string) (*Config, error) {
 		if val, ok := raw[key].(map[string]interface{}); ok {
 			// Look for config sections
 			if _, hasVersion := val["version"]; hasVersion {
-				appCount++
-			} else if _, hasBuild := val["build"]; hasBuild {
-				appCount++
-			} else if _, hasDocker := val["docker"]; hasDocker {
 				appCount++
 			} else if _, hasGit := val["git"]; hasGit {
 				appCount++

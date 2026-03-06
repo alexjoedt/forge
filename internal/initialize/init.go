@@ -11,75 +11,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const defaultConfigTemplate = `# Forge Configuration
-# This file configures the forge CLI tool for managing releases, builds, and Docker images.
-
-version:
-  # Version scheme: "semver" (semantic versioning) or "calver" (calendar versioning)
-  scheme: %s
-  
-  # Prefix for git tags (e.g., "v" creates tags like "v1.2.3")
-  prefix: %s
-  
-  # CalVer format string (Go time format) - used when scheme is "calver"
-  calver_format: "%s"
-  
-  # Prerelease identifier (e.g., "rc.1", "beta.2")
-  pre: "%s"
-  
-  # Build metadata (e.g., "build.123")
-  meta: "%s"
-
-build:
-  # Target platforms for builds (format: "OS/ARCH")
-  targets:
-%s
-  
-  # Linker flags template (supports Go template syntax)
-  # Available variables: .Version, .Commit, .ShortCommit, .Date, .OS, .Arch
-  ldflags: "%s"
-  
-  # Output directory for built binaries
-  output_dir: %s
-
-docker:
-  # Enable/disable Docker image builds
-  enabled: %t
-  
-  # Docker image repository (e.g., "ghcr.io/username/project")
-  repository: %s
-  
-  # Path to Dockerfile
-  dockerfile: %s
-  
-  # Image tags (supports Go template syntax)
-  # Available variables: .Version, .CalVer, .Commit, .ShortCommit, .Date
-  tags:
-%s
-  
-  # Target platforms for multi-arch builds
-  platforms:
-%s
-  
-  # Build arguments (key-value pairs)
-  build_args: {}
-
-git:
-  # Tag prefix (e.g., "v")
-  tag_prefix: %s
-  
-  # Default branch name
-  default_branch: %s
-`
-
 const multiAppConfigHeader = `# Forge Multi-App Configuration
-# This file configures the forge CLI tool for managing multiple applications in a monorepo.
-# Each application has its own versioning, build, and Docker settings.
+# This file configures the forge CLI tool for managing multiple apps in a monorepo.
+# Each application has its own version scheme and git tag prefix.
 #
 # Usage:
-#   forge bump mino --app api             # Tag the API app
-#   forge build --app worker              # Build the worker app
-#   forge image --app api --push          # Build and push API Docker image
+#   forge bump minor --app api            # Tag the API app
+#   forge version --app api               # Show current version
 #
 # If no --app flag is specified, the defaultApp will be used.
 
@@ -162,56 +100,6 @@ func Init(ctx context.Context, opts Options) error {
 
 	logger.Infof("config file created at %s", outputPath)
 	return nil
-}
-
-// generateYAMLContent generates formatted YAML content from a Config struct.
-func generateYAMLContent(cfg *config.AppConfig) (string, error) {
-	// Format targets as YAML list
-	targetsYAML := ""
-	for _, target := range cfg.Build.Targets {
-		targetsYAML += fmt.Sprintf("    - %s\n", target)
-	}
-
-	// Format docker tags as YAML list
-	tagsYAML := ""
-	for _, tag := range cfg.Docker.Tags {
-		tagsYAML += fmt.Sprintf("    - \"%s\"\n", tag)
-	}
-
-	// Format docker platforms as YAML list
-	platformsYAML := ""
-	for _, platform := range cfg.Docker.Platforms {
-		platformsYAML += fmt.Sprintf("    - %s\n", platform)
-	}
-
-	content := fmt.Sprintf(defaultConfigTemplate,
-		cfg.Version.Scheme,
-		cfg.Version.Prefix,
-		cfg.Version.CalVerFormat,
-		cfg.Version.Pre,
-		cfg.Version.Meta,
-		targetsYAML,
-		cfg.Build.LDFlags,
-		cfg.Build.OutputDir,
-		cfg.Docker.Enabled,
-		cfg.Docker.Repository,
-		cfg.Docker.Dockerfile,
-		tagsYAML,
-		platformsYAML,
-		cfg.Git.TagPrefix,
-		cfg.Git.DefaultBranch,
-	)
-
-	return content, nil
-}
-
-func generateYAMLContentMulti(cfg *config.Config) (string, error) {
-	data, err := yaml.Marshal(cfg)
-	if err != nil {
-		return "", err
-	}
-
-	return string(data), nil
 }
 
 func generateContent(v any) (string, error) {
