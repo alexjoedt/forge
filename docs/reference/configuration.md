@@ -21,29 +21,6 @@ version:
   pre: ""
   meta: ""
 
-build:
-  name: myapp
-  main_path: ./cmd/main.go
-  targets:
-    - linux/amd64
-    - darwin/arm64
-  ldflags: "-s -w -X main.version={{ .Version }}"
-  output_dir: dist
-  binaries: []
-
-docker:
-  enabled: true
-  repository: ghcr.io/username/myapp
-  repositories: []
-  dockerfile: ./Dockerfile
-  tags:
-    - "{{ .Version }}"
-    - "latest"
-  platforms:
-    - linux/amd64
-    - linux/arm64
-  build_args: {}
-
 git:
   tag_prefix: v
   default_branch: main
@@ -63,15 +40,11 @@ defaultApp: api
 
 api:
   version: { ... }
-  build: { ... }
-  docker: { ... }
   git: { ... }
   nodejs: { ... }
 
 worker:
   version: { ... }
-  build: { ... }
-  docker: { ... }
   git: { ... }
 ```
 
@@ -98,49 +71,6 @@ Version scheme settings.
 | `2006.01` | `2025.11` | Year.Month |
 
 `WW` is a special Forge extension for ISO week numbers.
-
----
-
-## `build`
-
-Go binary build settings. **Optional** — omit if you only use Forge for version management.
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `name` | `string` | | dir name | Binary name |
-| `main_path` | `string` | | | Path to `main.go` |
-| `targets` | `string[]` | | `[]` | Build targets (`OS/ARCH`) |
-| `ldflags` | `string` | | `""` | Linker flags (supports templates) |
-| `output_dir` | `string` | | `dist` | Output directory |
-| `binaries` | `Binary[]` | | `[]` | Multiple binaries (see below) |
-
-### `binaries[]` (Multi-Binary)
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `name` | `string` | ✅ | — | Binary output filename |
-| `path` | `string` | ✅ | — | Path to `main.go` directory |
-| `ldflags` | `string` | | parent `ldflags` | Ldflags override |
-
----
-
-## `docker`
-
-Docker image build settings. **Optional** — set `enabled: true` to activate.
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `enabled` | `bool` | | `false` | Enable Docker builds |
-| `repository` | `string` | | `""` | Single image repository |
-| `repositories` | `string[]` | | `[]` | Multiple image repositories |
-| `dockerfile` | `string` | | `./Dockerfile` | Path to Dockerfile |
-| `tags` | `string[]` | | `[]` | Tag templates (supports Go templates) |
-| `platforms` | `string[]` | | `[]` | Target platforms |
-| `build_args` | `map` | | `{}` | Docker build arguments |
-
-::: info Repository Priority
-If both `repository` and `repositories` are set, `repositories` takes precedence. `repository` is provided for backward compatibility.
-:::
 
 ---
 
