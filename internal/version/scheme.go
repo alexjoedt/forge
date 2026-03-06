@@ -340,6 +340,11 @@ func (v *Version) BumpPreRelease(channel string) (*Version, error) {
 	if err := ValidateSingleIdentifier(channel); err != nil {
 		return nil, fmt.Errorf("invalid prerelease channel %q: %w", channel, err)
 	}
+	// Per SemVer, numeric identifiers MUST NOT include leading zeroes.
+	// ValidateSingleIdentifier allows "01", so we add an explicit guard here.
+	if isNumericStr(channel) && len(channel) > 1 && channel[0] == '0' {
+		return nil, fmt.Errorf("invalid numeric prerelease channel %q: must not contain leading zeros", channel)
+	}
 	next := &Version{
 		Scheme: v.Scheme,
 		Major:  v.Major,
