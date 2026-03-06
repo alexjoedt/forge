@@ -79,6 +79,7 @@ func main() {
 			commands.Hotfix(),
 			commands.Version(),
 			commands.Changelog(),
+			commands.Retag(),
 			commands.Validate(),
 		},
 	}
