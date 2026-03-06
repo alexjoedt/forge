@@ -132,6 +132,14 @@ type InitResult struct {
 	Message    string `json:"message,omitempty"`
 }
 
+// RetagResult represents the result of a retag command
+type RetagResult struct {
+	Tag        string `json:"tag"`
+	FromCommit string `json:"from_commit"`
+	ToCommit   string `json:"to_commit"`
+	Pushed     bool   `json:"pushed"`
+}
+
 // ErrorResult represents an error result
 type ErrorResult struct {
 	Error   string `json:"error"`

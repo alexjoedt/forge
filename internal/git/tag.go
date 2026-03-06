@@ -89,6 +89,25 @@ func (t *Tagger) TagExists(ctx context.Context, tag string) (bool, error) {
 	return strings.TrimSpace(result.Stdout) != "", nil
 }
 
+// GetTagCommit returns the full commit hash that the given tag points to.
+// For annotated tags, it dereferences the tag object to the underlying commit.
+func (t *Tagger) GetTagCommit(ctx context.Context, tag string) (string, error) {
+	result := run.CmdInDir(ctx, t.repoDir, "git", "rev-parse", tag+"^{}")
+	if !result.Success() {
+		return "", fmt.Errorf("tag %q not found or invalid: %s", tag, strings.TrimSpace(result.Stderr))
+	}
+	return strings.TrimSpace(result.Stdout), nil
+}
+
+// ResolveCommit resolves any ref (commit hash, branch name, HEAD, etc.) to a full commit hash.
+func (t *Tagger) ResolveCommit(ctx context.Context, ref string) (string, error) {
+	result := run.CmdInDir(ctx, t.repoDir, "git", "rev-parse", ref)
+	if !result.Success() {
+		return "", fmt.Errorf("cannot resolve ref %q: %s", ref, strings.TrimSpace(result.Stderr))
+	}
+	return strings.TrimSpace(result.Stdout), nil
+}
+
 // CreateTag creates an annotated tag with the given name and message.
 // If dryRun is true, only logs the operation without creating the tag.
 func (t *Tagger) CreateTag(ctx context.Context, tag, message string) error {
@@ -133,6 +152,46 @@ func (t *Tagger) PushTag(ctx context.Context, tag string) error {
 	}
 
 	logger.Debugf("pushed tag: %s", tag)
+	return nil
+}
+
+// MoveTag force-moves an existing tag to the target commit-ish.
+// Uses git tag -f -a to preserve the annotated tag format.
+// Respects the dry-run flag.
+func (t *Tagger) MoveTag(ctx context.Context, tag, target, message string) error {
+	logger := log.FromContext(ctx)
+
+	if t.dryRun {
+		logger.Debugf("dry-run: would move tag %s to %s", tag, target)
+		return nil
+	}
+
+	result := run.CmdInDir(ctx, t.repoDir, "git", "tag", "-f", "-a", tag, target, "-m", message)
+	if err := result.MustSucceed("move tag"); err != nil {
+		return err
+	}
+
+	logger.Debugf("moved tag %s to %s", tag, target)
+	return nil
+}
+
+// PushTagForce force-pushes the tag to the remote repository.
+// Use this after MoveTag to update the remote ref.
+// Respects the dry-run flag.
+func (t *Tagger) PushTagForce(ctx context.Context, tag string) error {
+	logger := log.FromContext(ctx)
+
+	if t.dryRun {
+		logger.Debugf("dry-run: would force-push tag %s to origin", tag)
+		return nil
+	}
+
+	result := run.CmdInDir(ctx, t.repoDir, "git", "push", "--force", "origin", tag)
+	if err := result.MustSucceed("force-push tag"); err != nil {
+		return err
+	}
+
+	logger.Debugf("force-pushed tag %s to origin", tag)
 	return nil
 }
 
