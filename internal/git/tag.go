@@ -253,6 +253,17 @@ func (t *Tagger) CalculateNextVersion(ctx context.Context, scheme version.Scheme
 			return nil, fmt.Errorf("parse latest stable version: %w", err)
 		}
 		if current == nil {
+			// No stable tag found; fall back to the latest SemVer tag (may be prerelease).
+			latest, latestErr := t.ParseLatestVersion(ctx, version.SchemeSemVer)
+			if latestErr != nil {
+				return nil, fmt.Errorf("parse latest version: %w", latestErr)
+			}
+			if latest != nil {
+				// Graduate the prerelease to use its stable core as the bump base.
+				current = latest.Graduate()
+			}
+		}
+		if current == nil {
 			if bump == version.BumpMajor {
 				next = &version.Version{Scheme: version.SchemeSemVer, Major: 1}
 			} else {
@@ -324,6 +335,17 @@ func (t *Tagger) CreateNextTag(ctx context.Context, scheme version.Scheme, bump 
 		current, err := t.ParseLatestStableVersion(ctx)
 		if err != nil {
 			return "", fmt.Errorf("parse latest stable version: %w", err)
+		}
+		if current == nil {
+			// No stable tag found; fall back to the latest SemVer tag (may be prerelease).
+			latest, latestErr := t.ParseLatestVersion(ctx, version.SchemeSemVer)
+			if latestErr != nil {
+				return "", fmt.Errorf("parse latest version: %w", latestErr)
+			}
+			if latest != nil {
+				// Graduate the prerelease to use its stable core as the bump base.
+				current = latest.Graduate()
+			}
 		}
 		if current == nil {
 			if bump == version.BumpMajor {
