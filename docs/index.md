@@ -29,9 +29,6 @@ features:
   - icon: 📋
     title: Changelog Generation
     details: Parse Conventional Commits to generate changelogs in Markdown, JSON, or plain text. Supports breaking change detection.
-  - icon: 🐳
-    title: Docker & Build Integration
-    details: Cross-compile Go binaries and build Docker images for multiple platforms and registries with template-based tag naming.
   - icon: 🤖
     title: CI/CD & Scripting Ready
     details: JSON output mode, dry-run support, and non-interactive flags make Forge perfect for automated pipelines.

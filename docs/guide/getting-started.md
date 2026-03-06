@@ -11,8 +11,6 @@ Forge manages the full version lifecycle of your project:
 - **Hotfix workflows** for patching released versions without touching `main`
 - **Monorepo support** with per-app versioning and namespaced tags
 - **Changelog generation** from Conventional Commits
-- **Go binary builds** for multiple platforms *(basic — use [GoReleaser](https://goreleaser.com) for production)*
-- **Docker image builds** with multi-registry and multi-platform support
 - **Node.js integration** for syncing `package.json` versions
 
 ## How It Works

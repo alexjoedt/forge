@@ -1,6 +1,6 @@
 # Monorepo Setup
 
-Forge has first-class support for monorepos — repositories that contain multiple applications, each with independent versioning, builds, and Docker images.
+Forge has first-class support for monorepos — repositories that contain multiple applications, each with independent versioning.
 
 ## How It Works
 
@@ -8,7 +8,6 @@ In a monorepo configuration, each application gets:
 
 - Its own **version scheme** (SemVer or CalVer)
 - Its own **git tag prefix** (e.g., `api/v1.2.3`, `worker/v2025.44`)
-- Its own **build and Docker settings**
 - Its own **hotfix configuration**
 
 ## Configuration
@@ -25,12 +24,6 @@ api:
   git:
     tag_prefix: api/v
     default_branch: main
-  build:
-    name: api
-    main_path: ./cmd/api/main.go
-    targets:
-      - linux/amd64
-      - linux/arm64
 
 worker:
   version:
@@ -40,12 +33,6 @@ worker:
   git:
     tag_prefix: worker/v
     default_branch: main
-  build:
-    name: worker
-    main_path: ./cmd/worker/main.go
-    targets:
-      - linux/amd64
-      - linux/arm64
 ```
 
 ::: tip
@@ -118,19 +105,6 @@ forge version list --app api --limit 5
 forge version next --app worker
 ```
 
-### Building
-
-```bash
-forge build --app api
-forge build --app worker
-```
-
-### Docker Images
-
-```bash
-forge docker --app api --push
-```
-
 ### Changelog
 
 ```bash
@@ -178,8 +152,4 @@ forge version
 
 # Generate changelog for a specific app
 forge changelog --app api --output CHANGELOG-api.md
-
-# Build and deploy a specific app
-forge build --app api
-forge docker --app api --push
 ```

@@ -104,30 +104,6 @@ type VersionTagResult struct {
 	Exists  bool   `json:"exists"`
 }
 
-// BuildResult represents the result of a build command
-type BuildResult struct {
-	Version     string   `json:"version"`
-	Commit      string   `json:"commit"`
-	ShortCommit string   `json:"short_commit"`
-	Date        string   `json:"date"`
-	OutputDir   string   `json:"output_dir"`
-	Targets     []string `json:"targets"`
-	Binaries    []string `json:"binaries,omitempty"`
-	Message     string   `json:"message,omitempty"`
-}
-
-// ImageResult represents the result of an image command
-type ImageResult struct {
-	Version     string   `json:"version"`
-	Commit      string   `json:"commit"`
-	ShortCommit string   `json:"short_commit"`
-	Repository  string   `json:"repository"`
-	Tags        []string `json:"tags"`
-	Platforms   []string `json:"platforms"`
-	Pushed      bool     `json:"pushed"`
-	Message     string   `json:"message,omitempty"`
-}
-
 // InitResult represents the result of an init command.
 type InitResult struct {
 	OutputPath string `json:"output_path"`

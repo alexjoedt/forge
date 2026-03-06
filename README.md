@@ -15,9 +15,6 @@ I built this for my personal projects to handle versioning without the hassle.
 - **Monorepo Support**: Per-app versioning with namespaced tags
 - **Changelog Generation**: Parses conventional commits
 - **Interactive CLI**: Quick bumps with Bubble Tea UI
-- **Build & Docker**: Basic cross-compilation and image builds
-
-> **Note on Builds**: I highly recommend using [GoReleaser](https://goreleaser.com) for production builds. The build features here are basic and meant for my personal projects. Forge excels at version management - use it for tagging, then let GoReleaser handle the heavy lifting.
 
 > **⚠️ ALPHA Features**: The `pre` (prerelease) and `meta` (build metadata) configuration options are in early alpha state and not fully implemented. Do not use these in production environments.
 
@@ -47,25 +44,6 @@ forge hotfix status               # Show hotfix branch status
 forge version                     # Show current version(s)
 forge changelog                   # Generate changelog
 forge validate                    # Check config and git state
-forge build                       # Simple cross-compilation (use GoReleaser instead)
-forge docker                      # Build Docker images
-```
-
-## Docker & Multi-Platform Builds
-
-To build images for platforms other than your host (e.g., `linux/arm64` on an AMD64 machine), QEMU emulation must be registered with the kernel and a `docker-container` buildx builder must be active.
-
-**1. Register QEMU binfmt handlers:**
-
-```bash
-docker run --privileged --rm tonistiigi/binfmt --install all
-```
-
-**2. Create and activate a multi-platform builder:**
-
-```bash
-docker buildx create --name multiplatform-builder --driver docker-container --use
-docker buildx inspect --bootstrap
 ```
 
 ## Configuration
@@ -117,9 +95,6 @@ forge bump minor --push
 
 # Generate changelog
 forge changelog --output CHANGELOG.md
-
-# Build with GoReleaser (recommended)
-goreleaser release
 ```
 
 ### Hotfix Workflow

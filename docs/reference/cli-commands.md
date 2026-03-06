@@ -224,50 +224,6 @@ forge changelog --app api --from api/v1.0.0              # Monorepo
 
 ---
 
-## `forge build`
-
-Build Go binaries for multiple platforms.
-
-```bash
-forge build [flags]
-```
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--targets` | Comma-separated OS/ARCH targets | from config |
-| `--ldflags` | Ldflags template string | from config |
-| `--out` | Output directory | `dist` |
-| `--version` | Version string | auto-detected |
-| `--repo-dir` | Repository directory | `.` |
-| `--app` | Target app (monorepo) | `defaultApp` |
-| `--dry-run` | Preview without building | `false` |
-
----
-
-## `forge docker`
-
-Build and push Docker images. Alias: `forge image`.
-
-```bash
-forge docker [flags]
-```
-
-| Flag | Description | Default |
-|------|-------------|---------|
-| `--dockerfile` | Path to Dockerfile | `./Dockerfile` |
-| `--context` | Build context path | `.` |
-| `--repository` | Image repository (overrides config) | from config |
-| `--tags` | Comma-separated tag templates | from config |
-| `--platforms` | Comma-separated platforms | from config |
-| `--build-arg` | Build argument (`key=value`, repeatable) | |
-| `--push` | Push image to registry | `false` |
-| `--version` | Version string | auto-detected |
-| `--repo-dir` | Repository directory | `.` |
-| `--app` | Target app (monorepo) | `defaultApp` |
-| `--dry-run` | Preview without building | `false` |
-
----
-
 ## `forge validate`
 
 Validate configuration and git repository state.
