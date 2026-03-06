@@ -21,8 +21,6 @@ type Config struct {
 // AppConfig represents the forge.yaml configuration file structure.
 type AppConfig struct {
 	Version VersionConfig `yaml:"version"`
-	Build   BuildConfig   `yaml:"-"`
-	Docker  DockerConfig  `yaml:"-"`
 	Git     GitConfig     `yaml:"git"`
 	NodeJS  NodeJSConfig  `yaml:"nodejs"`
 }
@@ -34,47 +32,6 @@ type VersionConfig struct {
 	CalVerFormat string `yaml:"calver_format"` // e.g., "2006.01.02", "2006.WW" (supports WW for ISO week)
 	Pre          string `yaml:"pre"`           // [ALPHA] prerelease identifier - not fully implemented, do not use in production
 	Meta         string `yaml:"meta"`          // [ALPHA] build metadata - not fully implemented, do not use in production
-}
-
-// Binary represents a single binary to build.
-type Binary struct {
-	Name    string `yaml:"name"`    // Binary name (e.g., "forge", "cli-tool")
-	Path    string `yaml:"path"`    // Path to main.go (e.g., "./cmd/forge", ".")
-	LDFlags string `yaml:"ldflags"` // Optional ldflags override for this binary
-}
-
-// BuildConfig holds build settings.
-type BuildConfig struct {
-	Name      string   `yaml:"name"`       // Binary name for single-app builds (optional, defaults to repo dir basename)
-	MainPath  string   `yaml:"main_path"`  // Path to main.go (e.g., "./cmd/main.go")
-	Targets   []string `yaml:"targets"`    // ["linux/amd64", "darwin/arm64", ...]
-	LDFlags   string   `yaml:"ldflags"`    // template allowed (default for all binaries)
-	OutputDir string   `yaml:"output_dir"` // default "dist"
-	Binaries  []Binary `yaml:"binaries"`   // List of binaries to build (optional, defaults to single binary)
-}
-
-// DockerConfig holds Docker image build settings.
-type DockerConfig struct {
-	Enabled      bool              `yaml:"enabled"`
-	Repository   string            `yaml:"repository"`   // Single repository, use Repositories for multiple (e.g., "ghcr.io/USER/forge")
-	Repositories []string          `yaml:"repositories"` // Multiple repositories (e.g., ["ghcr.io/USER/forge", "docker.io/USER/forge"])
-	Dockerfile   string            `yaml:"dockerfile"`   // default "./Dockerfile"
-	Tags         []string          `yaml:"tags"`         // template strings
-	Platforms    []string          `yaml:"platforms"`    // ["linux/amd64", "linux/arm64"]
-	BuildArgs    map[string]string `yaml:"build_args"`
-}
-
-// GetRepositories returns all configured repositories.
-// If Repositories is set, it returns that. Otherwise, it returns Repository as a single-element slice for backward compatibility.
-// Returns empty slice if neither is set.
-func (dc *DockerConfig) GetRepositories() []string {
-	if len(dc.Repositories) > 0 {
-		return dc.Repositories
-	}
-	if dc.Repository != "" {
-		return []string{dc.Repository}
-	}
-	return []string{}
 }
 
 // HotfixConfig holds hotfix workflow configuration.
