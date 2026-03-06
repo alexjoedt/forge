@@ -130,16 +130,16 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 		scheme = appConfig.Version.Scheme
 	}
 
+	// Use git.tag_prefix as the default so tag discovery and creation use the same prefix.
+	// --prefix CLI flag overrides it consistently for both operations.
 	prefix := cmd.String("prefix")
 	if prefix == "" {
-		prefix = appConfig.Version.Prefix
+		prefix = appConfig.Git.TagPrefix
 	}
-
-	tagPrefix := appConfig.Git.TagPrefix
 
 	// Handle initial version creation
 	if initialVersion != "" {
-		return createInitialTag(ctx, repoDir, tagPrefix, initialVersion, dryRun, cmd.Bool("push"))
+		return createInitialTag(ctx, repoDir, prefix, initialVersion, dryRun, cmd.Bool("push"))
 	}
 
 	calverFormat := cmd.String("calver-format")
@@ -158,24 +158,24 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Create tagger for getting current version
-	tagger := git.NewTagger(repoDir, tagPrefix, dryRun)
+	tagger := git.NewTagger(repoDir, prefix, dryRun)
 	
 	// Check if any tags exist
-	hasTags, err := CheckForExistingTags(ctx, repoDir, tagPrefix)
+	hasTags, err := CheckForExistingTags(ctx, repoDir, prefix)
 	if err != nil {
 		return fmt.Errorf("failed to check for existing tags: %w", err)
 	}
 	
 	if !hasTags {
 		// No tags found - guide user to create first tag
-		return NoTagsError(tagPrefix, "1.0.0")
+		return NoTagsError(prefix, "1.0.0")
 	}
 
 	// Guard: block numeric bumps while the latest tag is a prerelease (SemVer only).
 	// This prevents accidentally creating e.g. v1.3.0 when you're on v1.3.0-rc.1.
 	if scheme == "semver" && !force {
 		if latestTag, ltErr := tagger.LatestTag(ctx); ltErr == nil && latestTag != "" {
-			vStr := version.StripPrefix(latestTag, tagPrefix)
+			vStr := version.StripPrefix(latestTag, prefix)
 			if lv, parseErr := version.ParseSemVer(vStr); parseErr == nil && lv.IsPrerelease() {
 				return preReleaseGuardError(latestTag, lv)
 			}
@@ -471,13 +471,14 @@ func preAction(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("forge bump pre only supports semver scheme (configured scheme: %s)", appConfig.Version.Scheme)
 	}
 
-	tagPrefix := appConfig.Git.TagPrefix
+	// Use git.tag_prefix as the default so tag discovery and creation use the same prefix.
+	// --prefix CLI flag overrides it consistently for both operations.
 	prefix := cmd.String("prefix")
 	if prefix == "" {
-		prefix = appConfig.Version.Prefix
+		prefix = appConfig.Git.TagPrefix
 	}
 
-	tagger := git.NewTagger(repoDir, tagPrefix, dryRun)
+	tagger := git.NewTagger(repoDir, prefix, dryRun)
 
 	nextVer, err := tagger.CalculatePreRelease(ctx, channel, cmd.String("bump"))
 	if err != nil {
