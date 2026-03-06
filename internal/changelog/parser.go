@@ -52,7 +52,7 @@ type Changelog struct {
 	ByType   map[CommitType][]Commit
 }
 
-//nolint:gochecknoglobals
+//nolint:gochecknoglobals // compiled regexes and markers are immutable and reused across parses to avoid recompilation overhead
 var (
 	// conventionalRegex matches Conventional Commits format: type(scope): subject.
 	conventionalRegex = regexp.MustCompile(`^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?(?P<breaking>!)?: (?P<subject>.+)$`)
