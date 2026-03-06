@@ -53,6 +53,9 @@ func ParseSemVer(s string) (*Version, error) {
 	parts := strings.SplitN(s, "+", 2)
 	if len(parts) == 2 {
 		v.Meta = parts[1]
+		if v.Meta == "" {
+			return nil, fmt.Errorf("invalid semver %q: metadata section after '+' must not be empty", v.Raw)
+		}
 		s = parts[0]
 	}
 
@@ -60,6 +63,9 @@ func ParseSemVer(s string) (*Version, error) {
 	parts = strings.SplitN(s, "-", 2)
 	if len(parts) == 2 {
 		v.Pre = parts[1]
+		if v.Pre == "" {
+			return nil, fmt.Errorf("invalid semver %q: prerelease section after '-' must not be empty", v.Raw)
+		}
 		s = parts[0]
 	}
 
