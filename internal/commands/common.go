@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/alexjoedt/forge/internal/log"
 	"github.com/alexjoedt/forge/internal/run"
 )
 
-// ForgeError represents a user friendly error with actionable suggestions
+// ForgeError represents a user friendly error with actionable suggestions.
 type ForgeError struct {
 	Title       string
 	Description string
@@ -18,17 +19,18 @@ type ForgeError struct {
 }
 
 func (e *ForgeError) Error() string {
-	msg := fmt.Sprintf("Error: %s\n", e.Title)
+	var sb strings.Builder
+	fmt.Fprintf(&sb, "Error: %s\n", e.Title)
 	if e.Description != "" {
-		msg += fmt.Sprintf("\n  %s\n", e.Description)
+		fmt.Fprintf(&sb, "\n  %s\n", e.Description)
 	}
 	if len(e.Suggestions) > 0 {
-		msg += "\n  Suggestions:\n"
+		sb.WriteString("\n  Suggestions:\n")
 		for _, suggestion := range e.Suggestions {
-			msg += fmt.Sprintf("    • %s\n", suggestion)
+			fmt.Fprintf(&sb, "    \u2022 %s\n", suggestion)
 		}
 	}
-	return msg
+	return sb.String()
 }
 
 // ValidateRequirements checks for forge.yaml and git repository.

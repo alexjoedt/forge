@@ -76,10 +76,10 @@ func hotfixCreateAction(ctx context.Context, cmd *cli.Command) error {
 	// 2. Validate requirements
 	repoDir, err := os.Getwd()
 	if err != nil {
-		return err
+		return fmt.Errorf("get working directory: %w", err)
 	}
 
-	if err := ValidateRequirements(ctx, repoDir); err != nil {
+	if err = ValidateRequirements(ctx, repoDir); err != nil {
 		return err
 	}
 
@@ -97,7 +97,7 @@ func hotfixCreateAction(ctx context.Context, cmd *cli.Command) error {
 			return err
 		}
 	} else {
-		if err := cfg.ValidateAppTag(appName, baseTag); err != nil {
+		if err = cfg.ValidateAppTag(appName, baseTag); err != nil {
 			return err
 		}
 	}
@@ -105,11 +105,11 @@ func hotfixCreateAction(ctx context.Context, cmd *cli.Command) error {
 	// 5. Get app config
 	appConfig, err := cfg.GetAppConfig(appName)
 	if err != nil {
-		return err
+		return fmt.Errorf("get app config: %w", err)
 	}
 
 	// 6. Validate base tag
-	if err := git.ValidateHotfixBaseTag(ctx, repoDir, baseTag); err != nil {
+	if err = git.ValidateHotfixBaseTag(ctx, repoDir, baseTag); err != nil {
 		return err
 	}
 
@@ -122,7 +122,7 @@ func hotfixCreateAction(ctx context.Context, cmd *cli.Command) error {
 
 	branchName, err := tagger.CreateHotfixBranch(ctx, baseTag, hotfixCfg.BranchPrefix, checkout)
 	if err != nil {
-		return err
+		return fmt.Errorf("create hotfix branch: %w", err)
 	}
 
 	// 9. Output result
@@ -137,7 +137,7 @@ func hotfixCreateAction(ctx context.Context, cmd *cli.Command) error {
 		result.Message = fmt.Sprintf("Would create hotfix branch from %s", baseTag)
 	}
 
-	if err := out.Print(result); err != nil {
+	if err = out.Print(result); err != nil {
 		return err
 	}
 
@@ -192,6 +192,7 @@ type HotfixBumpOutput struct {
 	Message  string `json:"message"`
 }
 
+//nolint:gocognit,nestif
 func hotfixBumpAction(ctx context.Context, cmd *cli.Command) error {
 	logger := log.FromContext(ctx)
 	out := output.FromContext(ctx)
@@ -199,7 +200,7 @@ func hotfixBumpAction(ctx context.Context, cmd *cli.Command) error {
 
 	repoDir, err := os.Getwd()
 	if err != nil {
-		return err
+		return fmt.Errorf("get working directory: %w", err)
 	}
 
 	// Check if --base flag provided (create + bump in one step)
@@ -241,7 +242,7 @@ func hotfixBumpAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Validate working tree is clean
-	if err := git.ValidateWorkingTreeClean(ctx, repoDir); err != nil {
+	if err = git.ValidateWorkingTreeClean(ctx, repoDir); err != nil {
 		return err
 	}
 
@@ -251,7 +252,7 @@ func hotfixBumpAction(ctx context.Context, cmd *cli.Command) error {
 	// Get next hotfix tag
 	nextTag, seq, err := tagger.GetNextHotfixTag(ctx, baseTag, hotfixCfg.Suffix)
 	if err != nil {
-		return err
+		return fmt.Errorf("get next hotfix tag: %w", err)
 	}
 
 	// Create tag
@@ -260,8 +261,8 @@ func hotfixBumpAction(ctx context.Context, cmd *cli.Command) error {
 		message = fmt.Sprintf("Hotfix %s", nextTag)
 	}
 
-	if err := tagger.CreateHotfixTag(ctx, nextTag, message); err != nil {
-		return err
+	if err = tagger.CreateHotfixTag(ctx, nextTag, message); err != nil {
+		return fmt.Errorf("create hotfix tag: %w", err)
 	}
 
 	if !dryRun {
@@ -271,7 +272,7 @@ func hotfixBumpAction(ctx context.Context, cmd *cli.Command) error {
 	// Push if requested
 	pushed := false
 	if cmd.Bool("push") && !dryRun {
-		if err := tagger.PushTag(ctx, nextTag); err != nil {
+		if err = tagger.PushTag(ctx, nextTag); err != nil {
 			return fmt.Errorf("failed to push tag: %w", err)
 		}
 		logger.Success("✓ Pushed tag to remote: %s", nextTag)
@@ -302,10 +303,10 @@ func quickHotfixBump(ctx context.Context, cmd *cli.Command, baseTag string, out 
 
 	repoDir, err := os.Getwd()
 	if err != nil {
-		return err
+		return fmt.Errorf("get working directory: %w", err)
 	}
 
-	if err := ValidateRequirements(ctx, repoDir); err != nil {
+	if err = ValidateRequirements(ctx, repoDir); err != nil {
 		return err
 	}
 
@@ -322,11 +323,11 @@ func quickHotfixBump(ctx context.Context, cmd *cli.Command, baseTag string, out 
 
 	appConfig, err := cfg.GetAppConfig(appName)
 	if err != nil {
-		return err
+		return fmt.Errorf("get app config: %w", err)
 	}
 
 	// Validate base tag
-	if err := git.ValidateHotfixBaseTag(ctx, repoDir, baseTag); err != nil {
+	if err = git.ValidateHotfixBaseTag(ctx, repoDir, baseTag); err != nil {
 		return err
 	}
 
@@ -336,7 +337,7 @@ func quickHotfixBump(ctx context.Context, cmd *cli.Command, baseTag string, out 
 	tagger := git.NewTagger(repoDir, appConfig.Git.TagPrefix, dryRun)
 	branchName, err := tagger.CreateHotfixBranch(ctx, baseTag, hotfixCfg.BranchPrefix, true)
 	if err != nil {
-		return err
+		return fmt.Errorf("create hotfix branch: %w", err)
 	}
 
 	if !dryRun {
@@ -344,14 +345,14 @@ func quickHotfixBump(ctx context.Context, cmd *cli.Command, baseTag string, out 
 	}
 
 	// Validate working tree is clean
-	if err := git.ValidateWorkingTreeClean(ctx, repoDir); err != nil {
+	if err = git.ValidateWorkingTreeClean(ctx, repoDir); err != nil {
 		return err
 	}
 
 	// Get next hotfix tag
 	nextTag, seq, err := tagger.GetNextHotfixTag(ctx, baseTag, hotfixCfg.Suffix)
 	if err != nil {
-		return err
+		return fmt.Errorf("get next hotfix tag: %w", err)
 	}
 
 	// Create tag
@@ -360,8 +361,8 @@ func quickHotfixBump(ctx context.Context, cmd *cli.Command, baseTag string, out 
 		message = fmt.Sprintf("Hotfix %s", nextTag)
 	}
 
-	if err := tagger.CreateHotfixTag(ctx, nextTag, message); err != nil {
-		return err
+	if err = tagger.CreateHotfixTag(ctx, nextTag, message); err != nil {
+		return fmt.Errorf("create hotfix tag: %w", err)
 	}
 
 	if !dryRun {
@@ -371,7 +372,7 @@ func quickHotfixBump(ctx context.Context, cmd *cli.Command, baseTag string, out 
 	// Push if requested
 	pushed := false
 	if cmd.Bool("push") && !dryRun {
-		if err := tagger.PushTag(ctx, nextTag); err != nil {
+		if err = tagger.PushTag(ctx, nextTag); err != nil {
 			return fmt.Errorf("failed to push tag: %w", err)
 		}
 		logger.Success("✓ Pushed tag to remote: %s", nextTag)
@@ -430,7 +431,7 @@ func hotfixStatusAction(ctx context.Context, cmd *cli.Command) error {
 
 	repoDir, err := os.Getwd()
 	if err != nil {
-		return err
+		return fmt.Errorf("get working directory: %w", err)
 	}
 
 	cfg, err := config.LoadFromDir(repoDir)
@@ -524,29 +525,32 @@ type HotfixListOutput struct {
 	Count    int      `json:"count"`
 }
 
+//nolint:gocognit,nestif
 func hotfixListAction(ctx context.Context, cmd *cli.Command) error {
 	out := output.FromContext(ctx)
 
 	repoDir, err := os.Getwd()
 	if err != nil {
-		return err
+		return fmt.Errorf("get working directory: %w", err)
 	}
 
 	baseTag := cmd.Args().First()
 
 	// If no base tag provided, try to detect from current branch
 	if baseTag == "" {
-		cfg, err := config.LoadFromDir(repoDir)
+		var detectionCfg *config.Config
+		detectionCfg, err = config.LoadFromDir(repoDir)
 		if err != nil {
 			return fmt.Errorf("failed to load config: %w", err)
 		}
 
-		currentBranch, err := git.GetCurrentBranch(repoDir)
+		var currentBranch string
+		currentBranch, err = git.GetCurrentBranch(repoDir)
 		if err != nil {
 			return err
 		}
 
-		for _, app := range cfg.GetAllAppConfigs() {
+		for _, app := range detectionCfg.GetAllAppConfigs() {
 			hotfixCfg := app.GetHotfixConfig()
 			if git.IsHotfixBranch(currentBranch, hotfixCfg.BranchPrefix) {
 				baseTag, err = git.ExtractTagFromBranch(currentBranch, hotfixCfg.BranchPrefix)
@@ -574,7 +578,7 @@ func hotfixListAction(ctx context.Context, cmd *cli.Command) error {
 
 	appConfig, err := cfg.GetAppConfig(appName)
 	if err != nil {
-		return err
+		return fmt.Errorf("get app config: %w", err)
 	}
 
 	hotfixCfg := appConfig.GetHotfixConfig()

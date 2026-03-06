@@ -3,6 +3,7 @@ package commands
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/alexjoedt/forge/internal/config"
@@ -63,7 +64,7 @@ func versionAction(ctx context.Context, cmd *cli.Command) error {
 	// Single app or specific app requested
 	appConfig, err := cfg.GetAppConfig(appName)
 	if err != nil {
-		return err
+		return fmt.Errorf("get app config: %w", err)
 	}
 
 	tagPrefix := appConfig.Git.TagPrefix
@@ -100,11 +101,11 @@ func versionAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Enhanced single-app display
-	fmt.Printf("Current Version: %s\n", table.CurrentVersion(versionStr))
-	fmt.Printf("Scheme:          %s\n", table.Scheme(appConfig.Version.Scheme))
-	fmt.Printf("Commit:          %s\n", table.Commit(commit))
+	fmt.Fprintf(os.Stdout, "Current Version: %s\n", table.CurrentVersion(versionStr))
+	fmt.Fprintf(os.Stdout, "Scheme:          %s\n", table.Scheme(appConfig.Version.Scheme))
+	fmt.Fprintf(os.Stdout, "Commit:          %s\n", table.Commit(commit))
 	if dirty {
-		fmt.Printf("Status:          %s\n", table.Date("dirty (uncommitted changes)"))
+		fmt.Fprintf(os.Stdout, "Status:          %s\n", table.Date("dirty (uncommitted changes)"))
 	}
 
 	// For SemVer repos, show prerelease status and latest stable tag if applicable.
@@ -190,7 +191,7 @@ func versionMultiAppAction(ctx context.Context, cfg *config.Config, repoDir stri
 	}
 
 	// Print table
-	fmt.Println(tbl.Render())
+	fmt.Fprintln(os.Stdout, tbl.Render())
 
 	return nil
 }
@@ -239,7 +240,7 @@ func versionListAction(ctx context.Context, cmd *cli.Command) error {
 	appName := cmd.String("app")
 	appConfig, err := cfg.GetAppConfig(appName)
 	if err != nil {
-		return err
+		return fmt.Errorf("get app config: %w", err)
 	}
 
 	tagPrefix := appConfig.Git.TagPrefix
@@ -259,7 +260,7 @@ func versionListAction(ctx context.Context, cmd *cli.Command) error {
 				Count:    0,
 			})
 		}
-		fmt.Println("No version tags found")
+		fmt.Fprintln(os.Stdout, "No version tags found")
 		return nil
 	}
 
@@ -312,7 +313,7 @@ func versionListAction(ctx context.Context, cmd *cli.Command) error {
 		)
 	}
 
-	fmt.Println(tbl.Render())
+	fmt.Fprintln(os.Stdout, tbl.Render())
 
 	return nil
 }
@@ -379,7 +380,7 @@ func versionNextAction(ctx context.Context, cmd *cli.Command) error {
 	appName := cmd.String("app")
 	appConfig, err := cfg.GetAppConfig(appName)
 	if err != nil {
-		return err
+		return fmt.Errorf("get app config: %w", err)
 	}
 
 	// Override config with flags
@@ -451,7 +452,7 @@ func versionNextAction(ctx context.Context, cmd *cli.Command) error {
 
 	// Output based on format
 	if out.IsJSON() {
-		result := map[string]interface{}{
+		result := map[string]any{
 			"current": currentVersion,
 			"next":    nextVersion.String(),
 			"tag":     tag,
@@ -461,10 +462,10 @@ func versionNextAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Text output
-	fmt.Printf("Current:  %s\n", currentVersion)
-	fmt.Printf("Next:     %s\n", nextVersion.String())
-	fmt.Printf("Tag:      %s\n", tag)
-	fmt.Printf("Scheme:   %s\n", scheme)
+	fmt.Fprintf(os.Stdout, "Current:  %s\n", currentVersion)
+	fmt.Fprintf(os.Stdout, "Next:     %s\n", nextVersion.String())
+	fmt.Fprintf(os.Stdout, "Tag:      %s\n", tag)
+	fmt.Fprintf(os.Stdout, "Scheme:   %s\n", scheme)
 
 	return nil
 }

@@ -11,15 +11,16 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+//nolint:gochecknoglobals
 var (
-	// version is set via ldflags at build time
+	// version is set via ldflags at build time.
 	version = "dev"
 	commit  = ""
 	date    = ""
 	builtBy = ""
 )
 
-func init() {
+func main() {
 	cli.VersionPrinter = func(cmd *cli.Command) {
 		fmt.Fprintf(cmd.Root().Writer, "%s version %s\n", cmd.Name, version)
 		if commit != "" {
@@ -32,9 +33,7 @@ func init() {
 			fmt.Fprintf(cmd.Root().Writer, "by:      %s\n", builtBy)
 		}
 	}
-}
 
-func main() {
 	cmd := &cli.Command{
 		Name:    "forge",
 		Usage:   "Git version management for Go projects and monorepos",
@@ -51,14 +50,9 @@ func main() {
 			},
 		},
 		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
-			// Setup logging
-			verbose := c.Bool("verbose")
 			jsonOutput := c.Bool("json")
-
-			// When JSON output is enabled, suppress verbose logging
-			if jsonOutput {
-				verbose = false
-			}
+			// When JSON output is enabled, suppress verbose logging.
+			verbose := c.Bool("verbose") && !jsonOutput
 			log.Setup(verbose)
 
 			// Setup output manager

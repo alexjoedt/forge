@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Format represents the output format
+// Format represents the output format.
 type Format string
 
 const (
@@ -17,15 +17,20 @@ const (
 	PlainFormat    Format = "plain"
 )
 
-// FormatMarkdown formats the changelog as Markdown
+const (
+	separatorWidth = 50
+	splitParts     = 2
+)
+
+// FormatMarkdown formats the changelog as Markdown.
 func FormatMarkdown(cl *Changelog) string {
 	var sb strings.Builder
 
 	// Header
 	if cl.ToTag != "" {
-		sb.WriteString(fmt.Sprintf("# %s", cl.ToTag))
+		fmt.Fprintf(&sb, "# %s", cl.ToTag)
 		if cl.FromTag != "" {
-			sb.WriteString(fmt.Sprintf(" (%s...%s)", cl.FromTag, cl.ToTag))
+			fmt.Fprintf(&sb, " (%s...%s)", cl.FromTag, cl.ToTag)
 		}
 		sb.WriteString("\n\n")
 	} else {
@@ -34,7 +39,7 @@ func FormatMarkdown(cl *Changelog) string {
 
 	// Date range
 	if !cl.ToDate.IsZero() {
-		sb.WriteString(fmt.Sprintf("*%s*\n\n", cl.ToDate.Format("2006-01-02")))
+		fmt.Fprintf(&sb, "*%s*\n\n", cl.ToDate.Format("2006-01-02"))
 	}
 
 	// Breaking changes first
@@ -74,7 +79,7 @@ func FormatMarkdown(cl *Changelog) string {
 			continue
 		}
 
-		sb.WriteString(fmt.Sprintf("## %s\n\n", GetTypeTitle(t)))
+		fmt.Fprintf(&sb, "## %s\n\n", GetTypeTitle(t))
 
 		for _, commit := range commits {
 			// Skip breaking changes as they're already listed
@@ -97,26 +102,26 @@ func formatMarkdownCommit(c *Commit) string {
 
 	// Scope
 	if c.Scope != "" {
-		sb.WriteString(fmt.Sprintf("**%s:** ", c.Scope))
+		fmt.Fprintf(&sb, "**%s:** ", c.Scope)
 	}
 
 	// Subject (remove conventional commit prefix if present)
 	subject := c.Subject
 	if c.Type != TypeOther {
 		// Remove "type(scope): " or "type: " prefix
-		parts := strings.SplitN(subject, ": ", 2)
-		if len(parts) == 2 {
+		parts := strings.SplitN(subject, ": ", splitParts)
+		if len(parts) == splitParts {
 			subject = parts[1]
 		}
 	}
 	sb.WriteString(subject)
 
 	// Commit hash
-	sb.WriteString(fmt.Sprintf(" ([%s](commit/%s))", c.ShortHash, c.Hash))
+	fmt.Fprintf(&sb, " ([%s](commit/%s))", c.ShortHash, c.Hash)
 
 	// PR number
 	if c.PRNumber != "" {
-		sb.WriteString(fmt.Sprintf(" [#%s](pull/%s)", c.PRNumber, c.PRNumber))
+		fmt.Fprintf(&sb, " [#%s](pull/%s)", c.PRNumber, c.PRNumber)
 	}
 
 	sb.WriteString("\n")
@@ -124,28 +129,28 @@ func formatMarkdownCommit(c *Commit) string {
 	return sb.String()
 }
 
-// FormatPlain formats the changelog as plain text
+// FormatPlain formats the changelog as plain text.
 func FormatPlain(cl *Changelog) string {
 	var sb strings.Builder
 
 	// Header
 	if cl.ToTag != "" {
-		sb.WriteString(fmt.Sprintf("%s", cl.ToTag))
+		sb.WriteString(cl.ToTag)
 		if cl.FromTag != "" {
-			sb.WriteString(fmt.Sprintf(" (%s...%s)", cl.FromTag, cl.ToTag))
+			fmt.Fprintf(&sb, " (%s...%s)", cl.FromTag, cl.ToTag)
 		}
 		sb.WriteString("\n")
-		sb.WriteString(strings.Repeat("=", 50))
+		sb.WriteString(strings.Repeat("=", separatorWidth))
 		sb.WriteString("\n\n")
 	} else {
 		sb.WriteString("Changelog\n")
-		sb.WriteString(strings.Repeat("=", 50))
+		sb.WriteString(strings.Repeat("=", separatorWidth))
 		sb.WriteString("\n\n")
 	}
 
 	// Date
 	if !cl.ToDate.IsZero() {
-		sb.WriteString(fmt.Sprintf("Date: %s\n\n", cl.ToDate.Format("2006-01-02")))
+		fmt.Fprintf(&sb, "Date: %s\n\n", cl.ToDate.Format("2006-01-02"))
 	}
 
 	// Breaking changes first
@@ -158,7 +163,7 @@ func FormatPlain(cl *Changelog) string {
 
 	if len(breakingChanges) > 0 {
 		sb.WriteString("⚠ BREAKING CHANGES\n")
-		sb.WriteString(strings.Repeat("-", 50))
+		sb.WriteString(strings.Repeat("-", separatorWidth))
 		sb.WriteString("\n\n")
 		for _, commit := range breakingChanges {
 			sb.WriteString(formatPlainCommit(&commit))
@@ -182,8 +187,8 @@ func FormatPlain(cl *Changelog) string {
 			continue
 		}
 
-		sb.WriteString(fmt.Sprintf("%s\n", GetTypeTitle(t)))
-		sb.WriteString(strings.Repeat("-", 50))
+		fmt.Fprintf(&sb, "%s\n", GetTypeTitle(t))
+		sb.WriteString(strings.Repeat("-", separatorWidth))
 		sb.WriteString("\n\n")
 
 		for _, commit := range commits {
@@ -207,25 +212,25 @@ func formatPlainCommit(c *Commit) string {
 
 	// Scope
 	if c.Scope != "" {
-		sb.WriteString(fmt.Sprintf("[%s] ", c.Scope))
+		fmt.Fprintf(&sb, "[%s] ", c.Scope)
 	}
 
 	// Subject
 	subject := c.Subject
 	if c.Type != TypeOther {
-		parts := strings.SplitN(subject, ": ", 2)
-		if len(parts) == 2 {
+		parts := strings.SplitN(subject, ": ", splitParts)
+		if len(parts) == splitParts {
 			subject = parts[1]
 		}
 	}
 	sb.WriteString(subject)
 
 	// Commit hash
-	sb.WriteString(fmt.Sprintf(" (%s)", c.ShortHash))
+	fmt.Fprintf(&sb, " (%s)", c.ShortHash)
 
 	// PR number
 	if c.PRNumber != "" {
-		sb.WriteString(fmt.Sprintf(" #%s", c.PRNumber))
+		fmt.Fprintf(&sb, " #%s", c.PRNumber)
 	}
 
 	sb.WriteString("\n")
@@ -233,7 +238,7 @@ func formatPlainCommit(c *Commit) string {
 	return sb.String()
 }
 
-// FormatJSON formats the changelog as JSON
+// FormatJSON formats the changelog as JSON.
 func FormatJSON(cl *Changelog) (string, error) {
 	// Create JSON-friendly structure
 	type JSONCommit struct {
@@ -251,8 +256,8 @@ func FormatJSON(cl *Changelog) (string, error) {
 	type JSONChangelog struct {
 		FromTag  string                  `json:"from_tag,omitempty"`
 		ToTag    string                  `json:"to_tag,omitempty"`
-		FromDate time.Time               `json:"from_date,omitempty"`
-		ToDate   time.Time               `json:"to_date,omitempty"`
+		FromDate time.Time               `json:"from_date,omitzero"`
+		ToDate   time.Time               `json:"to_date,omitzero"`
 		Commits  []JSONCommit            `json:"commits"`
 		ByType   map[string][]JSONCommit `json:"by_type"`
 	}

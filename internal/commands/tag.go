@@ -15,6 +15,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+//nolint:gochecknoglobals
 var appFlag = &cli.StringFlag{
 	Name:  "app",
 	Usage: "app to bump",
@@ -91,6 +92,7 @@ func Bump() *cli.Command {
 	}
 }
 
+//nolint:gocognit
 func tagAction(ctx context.Context, cmd *cli.Command) error {
 	logger := log.FromContext(ctx)
 	out := output.FromContext(ctx)
@@ -121,7 +123,7 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 	appName := cmd.String("app")
 	appConfig, err := cfg.GetAppConfig(appName)
 	if err != nil {
-		return err
+		return fmt.Errorf("get app config: %w", err)
 	}
 
 	// Override config with flags
@@ -159,13 +161,13 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 
 	// Create tagger for getting current version
 	tagger := git.NewTagger(repoDir, prefix, dryRun)
-	
+
 	// Check if any tags exist
 	hasTags, err := CheckForExistingTags(ctx, repoDir, prefix)
 	if err != nil {
 		return fmt.Errorf("failed to check for existing tags: %w", err)
 	}
-	
+
 	if !hasTags {
 		// No tags found - guide user to create first tag
 		return NoTagsError(prefix, "1.0.0")
@@ -192,21 +194,21 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 	// Interactive mode: if --bump flag is not explicitly set and we're in a TTY
 	var bump version.BumpType
 	isInteractive := interactive.IsInteractive() && !cmd.IsSet("bump") && !out.IsJSON()
-	
+
 	if isInteractive && scheme == "semver" {
 		// Show interactive prompt for bump type selection
 		logger.Debugf("entering interactive mode for bump selection")
-		
+
 		// Calculate preview versions for each bump type
 		choices := []interactive.BumpChoice{}
-		
+
 		for _, bumpType := range []version.BumpType{version.BumpPatch, version.BumpMinor, version.BumpMajor} {
-			previewVer, err := tagger.CalculateNextVersion(ctx, version.SchemeSemVer, bumpType, calverFormat, pre, meta)
-			if err != nil {
-				logger.Debugf("failed to calculate preview for %s: %v", bumpType, err)
+			previewVer, previewErr := tagger.CalculateNextVersion(ctx, version.SchemeSemVer, bumpType, calverFormat, pre, meta)
+			if previewErr != nil {
+				logger.Debugf("failed to calculate preview for %s: %v", bumpType, previewErr)
 				continue
 			}
-			
+
 			var desc string
 			switch bumpType {
 			case version.BumpPatch:
@@ -216,32 +218,32 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 			case version.BumpMajor:
 				desc = "breaking changes"
 			}
-			
+
 			choices = append(choices, interactive.BumpChoice{
 				Type:        interactive.BumpType(strings.ToLower(string(bumpType))),
 				Description: desc,
 				Preview:     version.WithPrefix(previewVer.String(), prefix),
 			})
 		}
-		
+
 		// Show selection prompt
-		selected, err := interactive.PromptBumpType(currentVersion, choices)
-		if err != nil {
-			return fmt.Errorf("interactive selection: %w", err)
+		selected, selErr := interactive.PromptBumpType(currentVersion, choices)
+		if selErr != nil {
+			return fmt.Errorf("interactive selection: %w", selErr)
 		}
-		
+
 		// Convert selected choice to bump type
 		switch selected.Type {
-		case "patch":
+		case interactive.BumpPatch:
 			bump = version.BumpPatch
-		case "minor":
+		case interactive.BumpMinor:
 			bump = version.BumpMinor
-		case "major":
+		case interactive.BumpMajor:
 			bump = version.BumpMajor
 		default:
 			return fmt.Errorf("invalid bump type selected: %s", selected.Type)
 		}
-		
+
 		logger.Debugf("selected bump type: %s", bump)
 	} else {
 		// Non-interactive mode: use flag or default
@@ -283,9 +285,10 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 	cleanVersion := nextVersion.String()
 
 	// Interactive confirmation before creating tag
+	var confirmed bool
 	if isInteractive && !dryRun {
-		preview := fmt.Sprintf("Current: %s → Next: %s", currentVersion, tag)
-		confirmed, err := interactive.PromptConfirmation("Create this tag?", preview)
+		preview := fmt.Sprintf("Current: %s \u2192 Next: %s", currentVersion, tag)
+		confirmed, err = interactive.PromptConfirmation("Create this tag?", preview)
 		if err != nil {
 			return fmt.Errorf("confirmation: %w", err)
 		}
@@ -296,6 +299,7 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Update package.json BEFORE creating the tag if Node.js integration is enabled
+	var updated bool
 	if appConfig.NodeJS.Enabled {
 		logger.Debugf("Node.js integration enabled, updating package.json")
 
@@ -303,7 +307,7 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 		nodeUpdater := nodejs.NewUpdater(repoDir, dryRun)
 
 		// Update package.json
-		updated, err := nodeUpdater.Update(ctx, appConfig.NodeJS.PackagePath, cleanVersion)
+		updated, err = nodeUpdater.Update(ctx, appConfig.NodeJS.PackagePath, cleanVersion)
 		if err != nil {
 			return fmt.Errorf("update package.json: %w", err)
 		}
@@ -318,7 +322,7 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 				pkgPath = "package.json"
 			}
 
-			if err := tagger.CommitVersionUpdate(ctx, pkgPath, tag); err != nil {
+			if err = tagger.CommitVersionUpdate(ctx, pkgPath, tag); err != nil {
 				return fmt.Errorf("commit package.json: %w", err)
 			}
 
@@ -327,7 +331,7 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Now create the tag on the current commit (which includes package.json update if any)
-	if err := tagger.CreateTag(ctx, tag, fmt.Sprintf("forge: release %s", tag)); err != nil {
+	if err = tagger.CreateTag(ctx, tag, fmt.Sprintf("forge: release %s", tag)); err != nil {
 		return fmt.Errorf("create tag: %w", err)
 	}
 
@@ -335,7 +339,7 @@ func tagAction(ctx context.Context, cmd *cli.Command) error {
 
 	// Push if requested
 	if pushed {
-		if err := tagger.PushTag(ctx, tag); err != nil {
+		if err = tagger.PushTag(ctx, tag); err != nil {
 			return fmt.Errorf("push tag: %w", err)
 		}
 	}
@@ -426,6 +430,7 @@ func BumpPre() *cli.Command {
 	}
 }
 
+//nolint:gocognit
 func preAction(ctx context.Context, cmd *cli.Command) error {
 	logger := log.FromContext(ctx)
 	out := output.FromContext(ctx)
@@ -464,7 +469,7 @@ func preAction(ctx context.Context, cmd *cli.Command) error {
 	appName := cmd.String("app")
 	appConfig, err := cfg.GetAppConfig(appName)
 	if err != nil {
-		return err
+		return fmt.Errorf("get app config: %w", err)
 	}
 
 	if appConfig.Version.Scheme != "semver" {
@@ -502,9 +507,10 @@ func preAction(ctx context.Context, cmd *cli.Command) error {
 
 	// Interactive confirmation.
 	isInteractive := interactive.IsInteractive() && !out.IsJSON()
+	var confirmed bool
 	if isInteractive {
-		preview := fmt.Sprintf("Current: %s → Next: %s", currentVersion, tag)
-		confirmed, err := interactive.PromptConfirmation("Create this tag?", preview)
+		preview := fmt.Sprintf("Current: %s \u2192 Next: %s", currentVersion, tag)
+		confirmed, err = interactive.PromptConfirmation("Create this tag?", preview)
 		if err != nil {
 			return fmt.Errorf("confirmation: %w", err)
 		}
@@ -515,10 +521,11 @@ func preAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Update package.json if Node.js integration is enabled.
+	var updated bool
 	if appConfig.NodeJS.Enabled {
 		logger.Debugf("Node.js integration enabled, updating package.json")
 		nodeUpdater := nodejs.NewUpdater(repoDir, dryRun)
-		updated, err := nodeUpdater.Update(ctx, appConfig.NodeJS.PackagePath, cleanVersion)
+		updated, err = nodeUpdater.Update(ctx, appConfig.NodeJS.PackagePath, cleanVersion)
 		if err != nil {
 			return fmt.Errorf("update package.json: %w", err)
 		}
@@ -527,20 +534,20 @@ func preAction(ctx context.Context, cmd *cli.Command) error {
 			if pkgPath == "" {
 				pkgPath = "package.json"
 			}
-			if err := tagger.CommitVersionUpdate(ctx, pkgPath, tag); err != nil {
+			if err = tagger.CommitVersionUpdate(ctx, pkgPath, tag); err != nil {
 				return fmt.Errorf("commit package.json: %w", err)
 			}
 			logger.Infof("committed package.json version update")
 		}
 	}
 
-	if err := tagger.CreateTag(ctx, tag, fmt.Sprintf("forge: release %s", tag)); err != nil {
+	if err = tagger.CreateTag(ctx, tag, fmt.Sprintf("forge: release %s", tag)); err != nil {
 		return fmt.Errorf("create tag: %w", err)
 	}
 
 	pushed := cmd.Bool("push")
 	if pushed {
-		if err := tagger.PushTag(ctx, tag); err != nil {
+		if err = tagger.PushTag(ctx, tag); err != nil {
 			return fmt.Errorf("push tag: %w", err)
 		}
 	}

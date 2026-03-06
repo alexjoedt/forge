@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -100,7 +101,7 @@ type NodeJSConfig struct {
 	PackagePath string `yaml:"package_path"` // Path to package.json (relative to repo root, defaults to "./package.json")
 }
 
-// Validate checks if the AppConfig has all required fields
+// Validate checks if the AppConfig has all required fields.
 func (ac *AppConfig) Validate() error {
 	// Version config is required
 	if ac.Version.Scheme == "" {
@@ -228,8 +229,8 @@ func Load(path string) (*Config, error) {
 	}
 
 	// Try to detect config type by checking for defaultApp field
-	var raw map[string]interface{}
-	if err := yaml.Unmarshal(data, &raw); err != nil {
+	var raw map[string]any
+	if err = yaml.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("parse config file: %w", err)
 	}
 
@@ -256,13 +257,13 @@ func Load(path string) (*Config, error) {
 	if hasDefaultApp || appCount > 1 {
 		log.DefaultLogger.Debugf("loading multi app configuration (detected: defaultApp=%v, apps=%d)", hasDefaultApp, appCount)
 		cfg := &Config{Apps: make(map[string]AppConfig)}
-		if err := yaml.Unmarshal(data, cfg); err != nil {
+		if err = yaml.Unmarshal(data, cfg); err != nil {
 			return nil, fmt.Errorf("unmarshal multi-app config: %w", err)
 		}
 
 		// Validate each app config
 		for appName, appCfg := range cfg.Apps {
-			if err := appCfg.Validate(); err != nil {
+			if err = appCfg.Validate(); err != nil {
 				return nil, fmt.Errorf("invalid config for app '%s': %w", appName, err)
 			}
 		}
@@ -273,12 +274,12 @@ func Load(path string) (*Config, error) {
 	// Single app config
 	log.DefaultLogger.Debugf("loading single app configuration")
 	single := &AppConfig{}
-	if err := yaml.Unmarshal(data, single); err != nil {
+	if err = yaml.Unmarshal(data, single); err != nil {
 		return nil, fmt.Errorf("unmarshal single-app config: %w", err)
 	}
 
 	// Validate single app config
-	if err := single.Validate(); err != nil {
+	if err = single.Validate(); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
 	}
 
@@ -306,7 +307,7 @@ func (c *Config) GetFirst() (*AppConfig, error) {
 		return &ac, nil
 	}
 
-	return nil, fmt.Errorf("no config found")
+	return nil, errors.New("no config found")
 }
 
 func (c *Config) GetAppConfig(app string) (*AppConfig, error) {

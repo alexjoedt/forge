@@ -3,6 +3,7 @@ package run
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -40,10 +41,11 @@ func Cmd(ctx context.Context, name string, args ...string) Result {
 	}
 
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			result.ExitCode = exitErr.ExitCode()
 		} else {
-			// Command couldn't be started or other error
+			// Command couldn't be started or other error.
 			result.ExitCode = -1
 		}
 		logger.Debugf("command failed: %s (exit code: %d, stderr: %s)", name, result.ExitCode, result.Stderr)
@@ -76,7 +78,8 @@ func CmdInDir(ctx context.Context, dir, name string, args ...string) Result {
 	}
 
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			result.ExitCode = exitErr.ExitCode()
 		} else {
 			result.ExitCode = -1
@@ -88,7 +91,7 @@ func CmdInDir(ctx context.Context, dir, name string, args ...string) Result {
 }
 
 // CmdStreamInDir executes a command in the specified directory, streaming
-// stdout and stderr directly to os.Stdout and os.Stderr.
+// stdout and stderr directly to [os.Stdout] and [os.Stderr].
 // The returned Result will have empty Stdout/Stderr fields since output
 // is written directly to the terminal.
 func CmdStreamInDir(ctx context.Context, dir, name string, args ...string) Result {
@@ -108,7 +111,8 @@ func CmdStreamInDir(ctx context.Context, dir, name string, args ...string) Resul
 	}
 
 	if err != nil {
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			result.ExitCode = exitErr.ExitCode()
 		} else {
 			result.ExitCode = -1

@@ -56,6 +56,8 @@ func (t *Tagger) LatestTag(ctx context.Context) (string, error) {
 }
 
 // ParseLatestVersion returns the parsed version of the latest tag, or nil if no tag exists.
+//
+//nolint:nilnil
 func (t *Tagger) ParseLatestVersion(ctx context.Context, scheme version.Scheme) (*version.Version, error) {
 	tag, err := t.LatestTag(ctx)
 	if err != nil {
@@ -119,6 +121,8 @@ func (t *Tagger) LatestStableTag(ctx context.Context) (string, error) {
 
 // ParseLatestStableVersion returns the parsed stable version from the latest stable tag.
 // Returns nil if no stable tags exist.
+//
+//nolint:nilnil
 func (t *Tagger) ParseLatestStableVersion(ctx context.Context) (*version.Version, error) {
 	tag, err := t.LatestStableTag(ctx)
 	if err != nil {
@@ -468,7 +472,7 @@ func (t *Tagger) GetVersionWithDirtyCheck(ctx context.Context) (string, error) {
 	// If no tags exist, return dev version
 	if tag == "" {
 		logger.Debugf("no tags found, using dev version")
-		return fmt.Sprintf("0.0.0-dev-%s", shortCommit), nil
+		return "0.0.0-dev-" + shortCommit, nil
 	}
 
 	// Strip prefix from tag to get version
@@ -592,8 +596,8 @@ func (t *Tagger) GetTagInfo(ctx context.Context, tagName string) (*TagInfo, erro
 
 	// Try multiple variations of the tag name to handle prefix auto-detection
 	tagsToTry := []string{
-		tagName,                    // Exact name as provided
-		t.prefix + tagName,         // With configured prefix
+		tagName,            // Exact name as provided
+		t.prefix + tagName, // With configured prefix
 	}
 
 	// Remove duplicates (if tagName already has prefix)

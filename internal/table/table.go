@@ -7,7 +7,8 @@ import (
 )
 
 var (
-	// Table styles
+	//nolint:gochecknoglobals
+	// Table styles.
 	headerStyle = lipgloss.NewStyle().
 			Bold(true).
 			Foreground(lipgloss.Color("12"))
@@ -29,14 +30,14 @@ var (
 			Foreground(lipgloss.Color("8"))
 )
 
-// Column represents a table column
+// Column represents a table column.
 type Column struct {
 	Header string
 	Width  int
 	Align  Align
 }
 
-// Align represents text alignment
+// Align represents text alignment.
 type Align int
 
 const (
@@ -45,19 +46,19 @@ const (
 	AlignCenter
 )
 
-// Row represents a table row with styled cells
+// Row represents a table row with styled cells.
 type Row struct {
 	Cells []string
 }
 
-// Table represents a formatted table
+// Table represents a formatted table.
 type Table struct {
 	Columns []Column
 	Rows    []Row
 	Border  bool
 }
 
-// New creates a new table
+// New creates a new table.
 func New(columns []Column) *Table {
 	return &Table{
 		Columns: columns,
@@ -66,12 +67,14 @@ func New(columns []Column) *Table {
 	}
 }
 
-// AddRow adds a row to the table
+// AddRow adds a row to the table.
 func (t *Table) AddRow(cells ...string) {
 	t.Rows = append(t.Rows, Row{Cells: cells})
 }
 
-// Render returns the formatted table as a string
+// Render returns the formatted table as a string.
+//
+//nolint:gocognit // table rendering requires many branches for borders, alignment, and styling.
 func (t *Table) Render() string {
 	if len(t.Columns) == 0 {
 		return ""
@@ -195,7 +198,7 @@ func (t *Table) Render() string {
 	return sb.String()
 }
 
-// pad pads a string to the specified width with the given alignment
+// pad pads a string to the specified width with the given alignment.
 func pad(s string, width int, align Align) string {
 	if len(s) >= width {
 		return s
@@ -209,12 +212,14 @@ func pad(s string, width int, align Align) string {
 		left := padding / 2
 		right := padding - left
 		return strings.Repeat(" ", left) + s + strings.Repeat(" ", right)
-	default: // AlignLeft
+	case AlignLeft:
+		fallthrough
+	default:
 		return s + strings.Repeat(" ", padding)
 	}
 }
 
-// padStyled pads a styled string (with ANSI codes) to the specified width
+// padStyled pads a styled string (with ANSI codes) to the specified width.
 func padStyled(s string, width int, align Align) string {
 	cleanLen := len(stripAnsi(s))
 	if cleanLen >= width {
@@ -229,12 +234,14 @@ func padStyled(s string, width int, align Align) string {
 		left := padding / 2
 		right := padding - left
 		return strings.Repeat(" ", left) + s + strings.Repeat(" ", right)
-	default: // AlignLeft
+	case AlignLeft:
+		fallthrough
+	default:
 		return s + strings.Repeat(" ", padding)
 	}
 }
 
-// stripAnsi removes ANSI escape codes from a string for length calculation
+// stripAnsi removes ANSI escape codes from a string for length calculation.
 func stripAnsi(s string) string {
 	// Simple ANSI stripping - remove \x1b[...m sequences
 	result := []rune{}
@@ -259,7 +266,7 @@ func stripAnsi(s string) string {
 	return string(result)
 }
 
-// Style helpers for table cells
+// CurrentVersion styles a current version string for display.
 func CurrentVersion(s string) string {
 	return currentStyle.Render(s)
 }

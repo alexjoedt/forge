@@ -4,13 +4,14 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/alexjoedt/forge/internal/run"
 )
 
-// CommitType represents the type of commit (feat, fix, etc.)
+// CommitType represents the type of commit (feat, fix, etc.).
 type CommitType string
 
 const (
@@ -27,7 +28,7 @@ const (
 	TypeOther    CommitType = "other"
 )
 
-// Commit represents a parsed git commit
+// Commit represents a parsed git commit.
 type Commit struct {
 	Hash      string
 	ShortHash string
@@ -41,7 +42,7 @@ type Commit struct {
 	PRNumber  string
 }
 
-// Changelog represents a collection of commits grouped by type
+// Changelog represents a collection of commits grouped by type.
 type Changelog struct {
 	FromTag   string
 	ToTag     string
@@ -51,22 +52,25 @@ type Changelog struct {
 	ByType    map[CommitType][]Commit
 }
 
+//nolint:gochecknoglobals
 var (
-	// Conventional Commits regex: type(scope): subject
+	// conventionalRegex matches Conventional Commits format: type(scope): subject.
 	conventionalRegex = regexp.MustCompile(`^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?(?P<breaking>!)?: (?P<subject>.+)$`)
-	// PR number regex: (#123)
+	// prRegex matches a PR number reference like (#123).
 	prRegex = regexp.MustCompile(`\(#(\d+)\)`)
-	// Breaking change markers
+	// breakingMarkers lists keywords that indicate a breaking change in the commit body.
 	breakingMarkers = []string{"BREAKING CHANGE:", "BREAKING-CHANGE:", "BREAKING:"}
 )
 
-// Parser parses git commits
+const commitFields = 6
+
+// Parser parses git commits.
 type Parser struct {
 	repoDir   string
 	tagPrefix string
 }
 
-// NewParser creates a new parser
+// NewParser creates a new parser.
 func NewParser(repoDir, tagPrefix string) *Parser {
 	return &Parser{
 		repoDir:   repoDir,
@@ -74,28 +78,29 @@ func NewParser(repoDir, tagPrefix string) *Parser {
 	}
 }
 
-// Parse parses git log between two commits/tags
+// Parse parses git log between two commits/tags.
 func (p *Parser) Parse(ctx context.Context, from, to string) (*Changelog, error) {
 	return Parse(ctx, p.repoDir, from, to)
 }
 
-// Parse parses git log between two commits/tags
+// Parse parses git log between two commits/tags.
 func Parse(ctx context.Context, repoDir, from, to string) (*Changelog, error) {
-	// Build git log command
+	// Build git log command.
 	var logRange string
-	if from != "" && to != "" {
-		logRange = fmt.Sprintf("%s..%s", from, to)
-	} else if from != "" {
-		logRange = fmt.Sprintf("%s..HEAD", from)
-	} else if to != "" {
+	switch {
+	case from != "" && to != "":
+		logRange = from + ".." + to
+	case from != "":
+		logRange = from + "..HEAD"
+	case to != "":
 		logRange = to
-	} else {
+	default:
 		logRange = "HEAD"
 	}
 
 	// Format: hash|short|author|date|subject|body
 	format := "%H|%h|%an|%aI|%s|%b"
-	result := run.CmdInDir(ctx, repoDir, "git", "log", logRange, "--no-merges", fmt.Sprintf("--pretty=format:%s", format), "--date=iso")
+	result := run.CmdInDir(ctx, repoDir, "git", "log", logRange, "--no-merges", "--pretty=format:"+format, "--date=iso")
 	
 	if !result.Success() {
 		return nil, fmt.Errorf("git log failed: %s", result.Stderr)
@@ -124,8 +129,8 @@ func Parse(ctx context.Context, repoDir, from, to string) (*Changelog, error) {
 		}
 		
 		// Check if this is a new commit line (starts with hash)
-		parts := strings.SplitN(line, "|", 6)
-		if len(parts) == 6 {
+		parts := strings.SplitN(line, "|", commitFields)
+		if len(parts) == commitFields {
 			// Save previous commit if exists
 			if currentCommit != nil {
 				currentCommit.Body = strings.TrimSpace(strings.Join(bodyLines, "\n"))
@@ -194,7 +199,7 @@ func Parse(ctx context.Context, repoDir, from, to string) (*Changelog, error) {
 	}, nil
 }
 
-// parseConventionalCommit parses the subject line for Conventional Commits format
+// parseConventionalCommit parses the subject line for Conventional Commits format.
 func parseConventionalCommit(commit *Commit) {
 	matches := conventionalRegex.FindStringSubmatch(commit.Subject)
 	if matches == nil {
@@ -220,15 +225,7 @@ func parseConventionalCommit(commit *Commit) {
 		TypePerf, TypeTest, TypeBuild, TypeCI, TypeChore,
 	}
 	
-	isValid := false
-	for _, t := range validTypes {
-		if commit.Type == t {
-			isValid = true
-			break
-		}
-	}
-	
-	if !isValid {
+	if !slices.Contains(validTypes, commit.Type) {
 		commit.Type = TypeOther
 	}
 
@@ -241,7 +238,7 @@ func parseConventionalCommit(commit *Commit) {
 	}
 }
 
-// checkBreakingChange checks the commit body for breaking change markers
+// checkBreakingChange checks the commit body for breaking change markers.
 func checkBreakingChange(commit *Commit) {
 	bodyLower := strings.ToLower(commit.Body)
 	for _, marker := range breakingMarkers {
@@ -252,7 +249,7 @@ func checkBreakingChange(commit *Commit) {
 	}
 }
 
-// extractPRNumber extracts PR number from subject or body
+// extractPRNumber extracts PR number from subject or body.
 func extractPRNumber(commit *Commit) {
 	// Check subject first
 	matches := prRegex.FindStringSubmatch(commit.Subject)
@@ -268,7 +265,7 @@ func extractPRNumber(commit *Commit) {
 	}
 }
 
-// GetTypeTitle returns a human-readable title for a commit type
+// GetTypeTitle returns a human-readable title for a commit type.
 func GetTypeTitle(t CommitType) string {
 	switch t {
 	case TypeFeat:
@@ -291,12 +288,15 @@ func GetTypeTitle(t CommitType) string {
 		return "Continuous Integration"
 	case TypeChore:
 		return "Chores"
-	default:
+	case TypeOther:
 		return "Other Changes"
 	}
+	return "Other Changes"
 }
 
-// GetTypePriority returns the display priority for a commit type (lower = higher priority)
+// GetTypePriority returns the display priority for a commit type (lower = higher priority).
+//
+//nolint:mnd
 func GetTypePriority(t CommitType) int {
 	switch t {
 	case TypeFeat:
@@ -319,7 +319,8 @@ func GetTypePriority(t CommitType) int {
 		return 9
 	case TypeChore:
 		return 10
-	default:
+	case TypeOther:
 		return 99
 	}
+	return 99
 }

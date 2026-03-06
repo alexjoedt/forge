@@ -11,7 +11,7 @@ type contextKey string
 
 const outputKey contextKey = "output"
 
-// Format represents the output format type
+// Format represents the output format type.
 type Format string
 
 const (
@@ -19,40 +19,43 @@ const (
 	FormatJSON Format = "json"
 )
 
-// Manager handles output formatting
+// Manager handles output formatting.
 type Manager struct {
 	format Format
 }
 
-// New creates a new output manager
+// New creates a new output manager.
 func New(format Format) *Manager {
 	return &Manager{
 		format: format,
 	}
 }
 
-// IsJSON returns true if the output format is JSON
+// IsJSON returns true if the output format is JSON.
 func (m *Manager) IsJSON() bool {
 	return m.format == FormatJSON
 }
 
-// Print outputs the result in the appropriate format
-func (m *Manager) Print(result interface{}) error {
+// Print outputs the result in the appropriate format.
+func (m *Manager) Print(result any) error {
 	if m.format == FormatJSON {
 		encoder := json.NewEncoder(os.Stdout)
 		encoder.SetIndent("", "  ")
-		return encoder.Encode(result)
+		if err := encoder.Encode(result); err != nil {
+			return fmt.Errorf("encode JSON output: %w", err)
+		}
+		return nil
 	}
-	// For text mode, let the caller handle the output
+	// For text mode, let the caller handle the output.
 	return nil
 }
 
-// WithManager adds the output manager to the context
+// WithManager adds the output manager to the context.
 func WithManager(ctx context.Context, manager *Manager) context.Context {
 	return context.WithValue(ctx, outputKey, manager)
 }
 
-// FromContext retrieves the output manager from the context
+// FromContext retrieves the output manager from the context.
 func FromContext(ctx context.Context) *Manager {
 	if manager, ok := ctx.Value(outputKey).(*Manager); ok {
 		return manager
@@ -60,7 +63,7 @@ func FromContext(ctx context.Context) *Manager {
 	return New(FormatText)
 }
 
-// TagResult represents the result of a bump command (creates a git tag)
+// TagResult represents the result of a bump command (creates a git tag).
 type TagResult struct {
 	Tag     string `json:"tag"`
 	Pushed  bool   `json:"pushed"`
@@ -68,7 +71,7 @@ type TagResult struct {
 	Message string `json:"message,omitempty"`
 }
 
-// VersionResult represents the result of a version command
+// VersionResult represents the result of a version command.
 type VersionResult struct {
 	Version string `json:"version"`
 	Scheme  string `json:"scheme"`
@@ -76,7 +79,7 @@ type VersionResult struct {
 	Dirty   bool   `json:"dirty,omitempty"`
 }
 
-// VersionHistoryEntry represents a single version in the history
+// VersionHistoryEntry represents a single version in the history.
 type VersionHistoryEntry struct {
 	Version string `json:"version"`
 	Tag     string `json:"tag"`
@@ -85,13 +88,13 @@ type VersionHistoryEntry struct {
 	Message string `json:"message,omitempty"`
 }
 
-// VersionHistoryResult represents the result of a version history command
+// VersionHistoryResult represents the result of a version history command.
 type VersionHistoryResult struct {
 	Versions []VersionHistoryEntry `json:"versions"`
 	Count    int                   `json:"count"`
 }
 
-// VersionTagResult represents the result of querying a specific tag
+// VersionTagResult represents the result of querying a specific tag.
 type VersionTagResult struct {
 	Tag     string `json:"tag"`
 	Version string `json:"version"`
@@ -125,14 +128,14 @@ type ImageResult struct {
 	Message     string   `json:"message,omitempty"`
 }
 
-// InitResult represents the result of an init command
+// InitResult represents the result of an init command.
 type InitResult struct {
 	OutputPath string `json:"output_path"`
 	Created    bool   `json:"created"`
 	Message    string `json:"message,omitempty"`
 }
 
-// RetagResult represents the result of a retag command
+// RetagResult represents the result of a retag command.
 type RetagResult struct {
 	Tag        string `json:"tag"`
 	FromCommit string `json:"from_commit"`
@@ -141,13 +144,13 @@ type RetagResult struct {
 	Message    string `json:"message,omitempty"`
 }
 
-// ErrorResult represents an error result
+// ErrorResult represents an error result.
 type ErrorResult struct {
 	Error   string `json:"error"`
 	Message string `json:"message,omitempty"`
 }
 
-// PrintError outputs an error in the appropriate format
+// PrintError outputs an error in the appropriate format.
 func (m *Manager) PrintError(err error, message string) {
 	if m.format == FormatJSON {
 		result := ErrorResult{
