@@ -130,6 +130,14 @@ func DefaultMulti() *Config {
 	}
 }
 
+// isOldNestedFormat checks whether a raw config map (or a nested app config map)
+// uses the legacy version:/git: block structure from before the config was flattened.
+func isOldNestedFormat(raw map[string]any) bool {
+	_, hasVersion := raw["version"]
+	_, hasGit := raw["git"]
+	return hasVersion || hasGit
+}
+
 // Load reads the configuration from the specified path.
 // If the file doesn't exist, returns the default configuration.
 func Load(path string) (*Config, error) {
@@ -159,6 +167,25 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("parse config file: %w", err)
 	}
 
+	// Detect the old nested format (version:/git: blocks) and return a clear migration error.
+	// Check the top-level keys for old format (single-app case).
+	if isOldNestedFormat(raw) {
+		return nil, fmt.Errorf("your forge.yaml uses the old nested format (version:/git: blocks) " +
+			"which is no longer supported\n\n" +
+			"  Migrate to the new flat format:\n\n" +
+			"    # Old format (no longer supported):\n" +
+			"    version:\n" +
+			"      scheme: semver\n" +
+			"      prefix: v\n" +
+			"    git:\n" +
+			"      default_branch: main\n\n" +
+			"    # New flat format:\n" +
+			"    scheme: semver\n" +
+			"    prefix: v\n" +
+			"    default_branch: main\n\n" +
+			"  Run 'forge init' to generate a new configuration file.")
+	}
+
 	// Check if this is a multi-app config by looking for defaultApp or multiple app configs
 	hasDefaultApp := false
 	appCount := 0
@@ -169,6 +196,26 @@ func Load(path string) (*Config, error) {
 		}
 		// Check if this key looks like an app config (has nested structure with scheme/prefix/etc.)
 		if val, ok := raw[key].(map[string]interface{}); ok {
+			// Detect old nested format inside a multi-app entry
+			if isOldNestedFormat(val) {
+				return nil, fmt.Errorf("app %q in forge.yaml uses the old nested format (version:/git: blocks) "+
+					"which is no longer supported\n\n"+
+					"  Migrate to the new flat format:\n\n"+
+					"    # Old format (no longer supported):\n"+
+					"    %s:\n"+
+					"      version:\n"+
+					"        scheme: semver\n"+
+					"        prefix: v\n"+
+					"      git:\n"+
+					"        default_branch: main\n\n"+
+					"    # New flat format:\n"+
+					"    %s:\n"+
+					"      scheme: semver\n"+
+					"      prefix: v\n"+
+					"      default_branch: main\n\n"+
+					"  Run 'forge init' to generate a new configuration file.",
+					key, key, key)
+			}
 			if _, hasScheme := val["scheme"]; hasScheme {
 				appCount++
 			} else if _, hasPrefix := val["prefix"]; hasPrefix {

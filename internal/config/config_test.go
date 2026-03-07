@@ -269,6 +269,90 @@ testapp:
 	}
 }
 
+// TestLoadOldNestedFormatSingleApp verifies that loading a single-app config that
+// still uses the legacy version:/git: block structure produces a clear migration error
+// instead of the opaque "scheme is required" message.
+func TestLoadOldNestedFormatSingleApp(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "forge.yaml")
+
+	// Write config in the old nested format (version:/git: blocks).
+	oldFormatContent := `version:
+  scheme: semver
+  prefix: v
+git:
+  default_branch: main
+`
+
+	if err := os.WriteFile(configPath, []byte(oldFormatContent), 0644); err != nil {
+		t.Fatalf("Failed to write config file: %v", err)
+	}
+
+	_, err := LoadFromDir(tmpDir)
+	if err == nil {
+		t.Fatal("Expected error for old nested config format, got nil")
+	}
+
+	errMsg := err.Error()
+
+	expectedParts := []string{
+		"old nested format",
+		"version:/git:",
+		"no longer supported",
+		"scheme: semver",
+		"prefix: v",
+		"default_branch: main",
+		"forge init",
+	}
+
+	for _, part := range expectedParts {
+		if !strings.Contains(errMsg, part) {
+			t.Errorf("Error message should contain %q, but got:\n%s", part, errMsg)
+		}
+	}
+}
+
+// TestLoadOldNestedFormatMultiApp verifies that a multi-app config where an app entry
+// uses the legacy version:/git: block structure also produces a clear migration error.
+func TestLoadOldNestedFormatMultiApp(t *testing.T) {
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "forge.yaml")
+
+	// Write multi-app config where one app uses the old nested format.
+	oldFormatContent := `defaultApp: api
+api:
+  version:
+    scheme: semver
+    prefix: api/v
+  git:
+    default_branch: main
+`
+
+	if err := os.WriteFile(configPath, []byte(oldFormatContent), 0644); err != nil {
+		t.Fatalf("Failed to write config file: %v", err)
+	}
+
+	_, err := LoadFromDir(tmpDir)
+	if err == nil {
+		t.Fatal("Expected error for old nested multi-app config format, got nil")
+	}
+
+	errMsg := err.Error()
+
+	expectedParts := []string{
+		"old nested format",
+		"version:/git:",
+		"no longer supported",
+		"forge init",
+	}
+
+	for _, part := range expectedParts {
+		if !strings.Contains(errMsg, part) {
+			t.Errorf("Error message should contain %q, but got:\n%s", part, errMsg)
+		}
+	}
+}
+
 // Hotfix Config Tests
 
 func TestAppConfig_GetHotfixConfig(t *testing.T) {
