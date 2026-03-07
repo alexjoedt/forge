@@ -20,61 +20,14 @@ type Config struct {
 
 // AppConfig represents the forge.yaml configuration file structure.
 type AppConfig struct {
-	Version VersionConfig `yaml:"version"`
-	Build   BuildConfig   `yaml:"-"`
-	Docker  DockerConfig  `yaml:"-"`
-	Git     GitConfig     `yaml:"git"`
-	NodeJS  NodeJSConfig  `yaml:"nodejs"`
-}
-
-// VersionConfig holds version scheme settings.
-type VersionConfig struct {
-	Scheme       string `yaml:"scheme"`        // "semver" or "calver"
-	Prefix       string `yaml:"prefix"`        // e.g., "v"
-	CalVerFormat string `yaml:"calver_format"` // e.g., "2006.01.02", "2006.WW" (supports WW for ISO week)
-	Pre          string `yaml:"pre"`           // [ALPHA] prerelease identifier - not fully implemented, do not use in production
-	Meta         string `yaml:"meta"`          // [ALPHA] build metadata - not fully implemented, do not use in production
-}
-
-// Binary represents a single binary to build.
-type Binary struct {
-	Name    string `yaml:"name"`    // Binary name (e.g., "forge", "cli-tool")
-	Path    string `yaml:"path"`    // Path to main.go (e.g., "./cmd/forge", ".")
-	LDFlags string `yaml:"ldflags"` // Optional ldflags override for this binary
-}
-
-// BuildConfig holds build settings.
-type BuildConfig struct {
-	Name      string   `yaml:"name"`       // Binary name for single-app builds (optional, defaults to repo dir basename)
-	MainPath  string   `yaml:"main_path"`  // Path to main.go (e.g., "./cmd/main.go")
-	Targets   []string `yaml:"targets"`    // ["linux/amd64", "darwin/arm64", ...]
-	LDFlags   string   `yaml:"ldflags"`    // template allowed (default for all binaries)
-	OutputDir string   `yaml:"output_dir"` // default "dist"
-	Binaries  []Binary `yaml:"binaries"`   // List of binaries to build (optional, defaults to single binary)
-}
-
-// DockerConfig holds Docker image build settings.
-type DockerConfig struct {
-	Enabled      bool              `yaml:"enabled"`
-	Repository   string            `yaml:"repository"`   // Single repository, use Repositories for multiple (e.g., "ghcr.io/USER/forge")
-	Repositories []string          `yaml:"repositories"` // Multiple repositories (e.g., ["ghcr.io/USER/forge", "docker.io/USER/forge"])
-	Dockerfile   string            `yaml:"dockerfile"`   // default "./Dockerfile"
-	Tags         []string          `yaml:"tags"`         // template strings
-	Platforms    []string          `yaml:"platforms"`    // ["linux/amd64", "linux/arm64"]
-	BuildArgs    map[string]string `yaml:"build_args"`
-}
-
-// GetRepositories returns all configured repositories.
-// If Repositories is set, it returns that. Otherwise, it returns Repository as a single-element slice for backward compatibility.
-// Returns empty slice if neither is set.
-func (dc *DockerConfig) GetRepositories() []string {
-	if len(dc.Repositories) > 0 {
-		return dc.Repositories
-	}
-	if dc.Repository != "" {
-		return []string{dc.Repository}
-	}
-	return []string{}
+	Scheme        string        `yaml:"scheme"`                    // "semver" or "calver"
+	Prefix        string        `yaml:"prefix"`                    // Tag prefix, e.g., "v", "api/v"
+	DefaultBranch string        `yaml:"default_branch"`            // e.g., "main"
+	CalVerFormat  string        `yaml:"calver_format,omitempty"`   // e.g., "2006.01.02", "2006.WW"
+	Pre           string        `yaml:"pre,omitempty"`             // [ALPHA] prerelease identifier
+	Meta          string        `yaml:"meta,omitempty"`            // [ALPHA] build metadata
+	Hotfix        *HotfixConfig `yaml:"hotfix,omitempty"`          // Hotfix workflow settings
+	NodeJS        NodeJSConfig  `yaml:"nodejs,omitempty"`          // Node.js package.json sync
 }
 
 // HotfixConfig holds hotfix workflow configuration.
@@ -88,13 +41,6 @@ type HotfixConfig struct {
 	Suffix string `yaml:"suffix"` // Default: "hotfix"
 }
 
-// GitConfig holds git-related settings.
-type GitConfig struct {
-	TagPrefix     string        `yaml:"tag_prefix"`     // e.g., "v"
-	DefaultBranch string        `yaml:"default_branch"` // e.g., "main"
-	Hotfix        *HotfixConfig `yaml:"hotfix,omitempty"`
-}
-
 // NodeJSConfig holds Node.js/npm package.json version sync settings.
 type NodeJSConfig struct {
 	Enabled     bool   `yaml:"enabled"`      // Enable package.json version updates
@@ -103,54 +49,46 @@ type NodeJSConfig struct {
 
 // Validate checks if the AppConfig has all required fields.
 func (ac *AppConfig) Validate() error {
-	// Version config is required
-	if ac.Version.Scheme == "" {
-		return fmt.Errorf("version.scheme is required\n\n" +
+	if ac.Scheme == "" {
+		return fmt.Errorf("scheme is required\n\n" +
 			"  Add to your forge.yaml:\n" +
-			"    version:\n" +
-			"      scheme: semver  # or calver\n\n" +
+			"    scheme: semver  # or calver\n\n" +
 			"  Valid schemes:\n" +
 			"    • semver - Semantic Versioning (e.g., v1.2.3)\n" +
 			"    • calver - Calendar Versioning (e.g., 2025.44.1)")
 	}
 
-	if ac.Version.Scheme != "semver" && ac.Version.Scheme != "calver" {
-		return fmt.Errorf("invalid version.scheme: '%s'\n\n"+
+	if ac.Scheme != "semver" && ac.Scheme != "calver" {
+		return fmt.Errorf("invalid scheme: '%s'\n\n"+
 			"  Valid schemes:\n"+
 			"    • semver - Semantic Versioning (e.g., v1.2.3)\n"+
 			"    • calver - Calendar Versioning (e.g., 2025.44.1)\n\n"+
 			"  Fix your forge.yaml:\n"+
-			"    version:\n"+
-			"      scheme: semver  # or calver",
-			ac.Version.Scheme)
+			"    scheme: semver  # or calver",
+			ac.Scheme)
 	}
 
-	// Git config is required
-	if ac.Git.TagPrefix == "" {
-		return fmt.Errorf("git.tag_prefix is required\n\n" +
+	if ac.Prefix == "" {
+		return fmt.Errorf("prefix is required\n\n" +
 			"  Add to your forge.yaml:\n" +
-			"    git:\n" +
-			"      tag_prefix: v  # or empty string for no prefix\n\n" +
+			"    prefix: v\n\n" +
 			"  Examples:\n" +
 			"    • 'v' for tags like v1.2.3\n" +
-			"    • 'api/v' for monorepo app tags like api/v1.2.3\n" +
-			"    • '' (empty) for tags without prefix like 1.2.3")
+			"    • 'api/v' for monorepo app tags like api/v1.2.3")
 	}
 
-	if ac.Git.DefaultBranch == "" {
-		return fmt.Errorf("git.default_branch is required\n\n" +
+	if ac.DefaultBranch == "" {
+		return fmt.Errorf("default_branch is required\n\n" +
 			"  Add to your forge.yaml:\n" +
-			"    git:\n" +
-			"      default_branch: main  # or master, develop, etc.")
+			"    default_branch: main  # or master, develop, etc.")
 	}
 
 	// CalVer format required for CalVer scheme
-	if ac.Version.Scheme == "calver" && ac.Version.CalVerFormat == "" {
-		return fmt.Errorf("version.calver_format is required when using calver scheme\n\n" +
+	if ac.Scheme == "calver" && ac.CalVerFormat == "" {
+		return fmt.Errorf("calver_format is required when using calver scheme\n\n" +
 			"  Add to your forge.yaml:\n" +
-			"    version:\n" +
-			"      scheme: calver\n" +
-			"      calver_format: \"2006.WW\"  # Choose a format below\n\n" +
+			"    scheme: calver\n" +
+			"    calver_format: \"2006.WW\"  # Choose a format below\n\n" +
 			"  Supported CalVer formats:\n" +
 			"    • \"2006.01.02\"     - Year.Month.Day (e.g., 2025.11.02)\n" +
 			"    • \"2006.WW\"        - Year.Week (e.g., 2025.44) ⭐ Popular\n" +
@@ -166,35 +104,22 @@ func (ac *AppConfig) Validate() error {
 // Default returns a default AppConfig for single app configuration.
 func Default() *AppConfig {
 	return &AppConfig{
-		Version: VersionConfig{
-			Scheme:       "semver",
-			Prefix:       "v",
-			CalVerFormat: "2006.01.02",
-			Pre:          "",
-			Meta:         "",
-		},
-		Git: GitConfig{
-			TagPrefix:     "v",
-			DefaultBranch: "main",
-		},
-		NodeJS: NodeJSConfig{
-			Enabled:     false,
-			PackagePath: "",
-		},
+		Scheme:        "semver",
+		Prefix:        "v",
+		DefaultBranch: "main",
+		CalVerFormat:  "2006.01.02",
 	}
 }
 
 // DefaultMulti returns a default Config for multi app configuration.
 func DefaultMulti() *Config {
 	apiConfig := Default()
-	apiConfig.Version.Prefix = "v"
-	apiConfig.Git.TagPrefix = "api/v"
+	apiConfig.Prefix = "api/v"
 
 	workerConfig := Default()
-	workerConfig.Version.Scheme = "calver"
-	workerConfig.Version.CalVerFormat = "2006.WW"
-	workerConfig.Version.Prefix = "v"
-	workerConfig.Git.TagPrefix = "worker/v"
+	workerConfig.Scheme = "calver"
+	workerConfig.CalVerFormat = "2006.WW"
+	workerConfig.Prefix = "worker/v"
 
 	return &Config{
 		DefaultApp: "api",
@@ -203,6 +128,14 @@ func DefaultMulti() *Config {
 			"worker": *workerConfig,
 		},
 	}
+}
+
+// isOldNestedFormat checks whether a raw config map (or a nested app config map)
+// uses the legacy version:/git: block structure from before the config was flattened.
+func isOldNestedFormat(raw map[string]any) bool {
+	_, hasVersion := raw["version"]
+	_, hasGit := raw["git"]
+	return hasVersion || hasGit
 }
 
 // Load reads the configuration from the specified path.
@@ -234,6 +167,25 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("parse config file: %w", err)
 	}
 
+	// Detect the old nested format (version:/git: blocks) and return a clear migration error.
+	// Check the top-level keys for old format (single-app case).
+	if isOldNestedFormat(raw) {
+		return nil, fmt.Errorf("your forge.yaml uses the old nested format (version:/git: blocks) " +
+			"which is no longer supported\n\n" +
+			"  Migrate to the new flat format:\n\n" +
+			"    # Old format (no longer supported):\n" +
+			"    version:\n" +
+			"      scheme: semver\n" +
+			"      prefix: v\n" +
+			"    git:\n" +
+			"      default_branch: main\n\n" +
+			"    # New flat format:\n" +
+			"    scheme: semver\n" +
+			"    prefix: v\n" +
+			"    default_branch: main\n\n" +
+			"  Run 'forge init' to generate a new configuration file.")
+	}
+
 	// Check if this is a multi-app config by looking for defaultApp or multiple app configs
 	hasDefaultApp := false
 	appCount := 0
@@ -242,12 +194,31 @@ func Load(path string) (*Config, error) {
 			hasDefaultApp = true
 			continue
 		}
-		// Check if this key looks like an app config (has nested structure with version/build/docker/git)
+		// Check if this key looks like an app config (has nested structure with scheme/prefix/etc.)
 		if val, ok := raw[key].(map[string]interface{}); ok {
-			// Look for config sections
-			if _, hasVersion := val["version"]; hasVersion {
+			// Detect old nested format inside a multi-app entry
+			if isOldNestedFormat(val) {
+				return nil, fmt.Errorf("app %q in forge.yaml uses the old nested format (version:/git: blocks) "+
+					"which is no longer supported\n\n"+
+					"  Migrate to the new flat format:\n\n"+
+					"    # Old format (no longer supported):\n"+
+					"    %s:\n"+
+					"      version:\n"+
+					"        scheme: semver\n"+
+					"        prefix: v\n"+
+					"      git:\n"+
+					"        default_branch: main\n\n"+
+					"    # New flat format:\n"+
+					"    %s:\n"+
+					"      scheme: semver\n"+
+					"      prefix: v\n"+
+					"      default_branch: main\n\n"+
+					"  Run 'forge init' to generate a new configuration file.",
+					key, key, key)
+			}
+			if _, hasScheme := val["scheme"]; hasScheme {
 				appCount++
-			} else if _, hasGit := val["git"]; hasGit {
+			} else if _, hasPrefix := val["prefix"]; hasPrefix {
 				appCount++
 			}
 		}
@@ -334,8 +305,8 @@ func (c *Config) GetAppConfig(app string) (*AppConfig, error) {
 
 // GetHotfixConfig returns hotfix config with defaults applied.
 func (ac *AppConfig) GetHotfixConfig() HotfixConfig {
-	if ac.Git.Hotfix != nil {
-		cfg := *ac.Git.Hotfix
+	if ac.Hotfix != nil {
+		cfg := *ac.Hotfix
 		// Apply defaults for empty fields
 		if cfg.BranchPrefix == "" {
 			cfg.BranchPrefix = "release/"
@@ -381,9 +352,9 @@ func (c *Config) DetectAppFromTag(tag string) (string, error) {
 		return "", nil
 	}
 
-	// Iterate through apps, check if tag starts with app.Git.TagPrefix
+	// Iterate through apps, check if tag starts with app.Prefix
 	for appName, app := range c.Apps {
-		if strings.HasPrefix(tag, app.Git.TagPrefix) {
+		if strings.HasPrefix(tag, app.Prefix) {
 			return appName, nil
 		}
 	}
@@ -408,7 +379,7 @@ func (c *Config) ValidateAppTag(appName, tag string) error {
 		return err
 	}
 
-	if !strings.HasPrefix(tag, app.Git.TagPrefix) {
+	if !strings.HasPrefix(tag, app.Prefix) {
 		// Detect what app the tag suggests
 		detectedApp, _ := c.DetectAppFromTag(tag)
 		if detectedApp != "" && detectedApp != appName {

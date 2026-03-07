@@ -14,19 +14,14 @@ Use `forge init` to generate a default configuration file.
 ## Single App Configuration
 
 ```yaml
-version:
-  scheme: semver
-  prefix: v
-  calver_format: "2006.01.02"
-  pre: ""
-  meta: ""
+scheme: semver
+prefix: v
+default_branch: main
+calver_format: "2006.01.02"
 
-git:
-  tag_prefix: v
-  default_branch: main
-  hotfix:
-    branch_prefix: "release/"
-    suffix: "hotfix"
+hotfix:
+  branch_prefix: "release/"
+  suffix: "hotfix"
 
 nodejs:
   enabled: false
@@ -39,25 +34,28 @@ nodejs:
 defaultApp: api
 
 api:
-  version: { ... }
-  git: { ... }
-  nodejs: { ... }
+  scheme: semver
+  prefix: api/v
+  default_branch: main
 
 worker:
-  version: { ... }
-  git: { ... }
+  scheme: calver
+  calver_format: "2006.WW"
+  prefix: worker/v
+  default_branch: main
 ```
 
 ---
 
-## `version`
+## Top-Level Fields
 
-Version scheme settings.
+Version scheme and tag settings.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `scheme` | `string` | ✅ | — | Versioning scheme: `semver` or `calver` |
-| `prefix` | `string` | | `""` | Prefix for displayed version (e.g., `v`) |
+| `prefix` | `string` | ✅ | — | Git tag prefix (e.g., `v`, `api/v`) |
+| `default_branch` | `string` | ✅ | — | Default branch name |
 | `calver_format` | `string` | ✅ (if calver) | — | CalVer format string |
 | `pre` | `string` | | `""` | ⚠️ *[ALPHA]* Prerelease identifier |
 | `meta` | `string` | | `""` | ⚠️ *[ALPHA]* Build metadata |
@@ -74,17 +72,9 @@ Version scheme settings.
 
 ---
 
-## `git`
+## `hotfix`
 
-Git-related settings.
-
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `tag_prefix` | `string` | ✅ | — | Git tag prefix (e.g., `v`, `api/v`) |
-| `default_branch` | `string` | ✅ | — | Default branch name |
-| `hotfix` | `HotfixConfig` | | defaults | Hotfix workflow settings |
-
-### `git.hotfix`
+Hotfix workflow settings. **Optional** — defaults are applied if omitted.
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
@@ -135,13 +125,9 @@ These flags are available on all commands:
 The simplest valid `forge.yaml`:
 
 ```yaml
-version:
-  scheme: semver
-  prefix: v
-
-git:
-  tag_prefix: v
-  default_branch: main
+scheme: semver
+prefix: v
+default_branch: main
 ```
 
 This gives you `forge bump`, `forge version`, `forge changelog`, `forge validate`, and `forge hotfix` — everything needed for version management without builds or Docker.

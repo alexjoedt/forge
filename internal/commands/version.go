@@ -67,7 +67,7 @@ func versionAction(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("get app config: %w", err)
 	}
 
-	tagPrefix := appConfig.Git.TagPrefix
+	tagPrefix := appConfig.Prefix
 
 	// Create tagger
 	tagger := git.NewTagger(repoDir, tagPrefix, false)
@@ -93,7 +93,7 @@ func versionAction(ctx context.Context, cmd *cli.Command) error {
 	if out.IsJSON() {
 		result := output.VersionResult{
 			Version: versionStr,
-			Scheme:  appConfig.Version.Scheme,
+			Scheme:  appConfig.Scheme,
 			Commit:  commit,
 			Dirty:   dirty,
 		}
@@ -102,14 +102,14 @@ func versionAction(ctx context.Context, cmd *cli.Command) error {
 
 	// Enhanced single-app display
 	fmt.Fprintf(os.Stdout, "Current Version: %s\n", table.CurrentVersion(versionStr))
-	fmt.Fprintf(os.Stdout, "Scheme:          %s\n", table.Scheme(appConfig.Version.Scheme))
+	fmt.Fprintf(os.Stdout, "Scheme:          %s\n", table.Scheme(appConfig.Scheme))
 	fmt.Fprintf(os.Stdout, "Commit:          %s\n", table.Commit(commit))
 	if dirty {
 		fmt.Fprintf(os.Stdout, "Status:          %s\n", table.Date("dirty (uncommitted changes)"))
 	}
 
 	// For SemVer repos, show prerelease status and latest stable tag if applicable.
-	if appConfig.Version.Scheme == "semver" {
+	if appConfig.Scheme == "semver" {
 		if latestTag, ltErr := tagger.LatestTag(ctx); ltErr == nil && latestTag != "" {
 			vStr := version.StripPrefix(latestTag, tagPrefix)
 			if parsedVer, pErr := version.ParseSemVer(vStr); pErr == nil && parsedVer.IsPrerelease() {
@@ -142,7 +142,7 @@ func versionMultiAppAction(ctx context.Context, cfg *config.Config, repoDir stri
 	// Get all apps and their versions
 	apps := cfg.GetAllApps()
 	for appName, appConfig := range apps {
-		tagPrefix := appConfig.Git.TagPrefix
+		tagPrefix := appConfig.Prefix
 		tagger := git.NewTagger(repoDir, tagPrefix, false)
 
 		// Get version
@@ -184,7 +184,7 @@ func versionMultiAppAction(ctx context.Context, cfg *config.Config, repoDir stri
 		tbl.AddRow(
 			appName,
 			table.CurrentVersion(versionStr),
-			table.Scheme(appConfig.Version.Scheme),
+			table.Scheme(appConfig.Scheme),
 			latestTag,
 			table.Date(dateStr),
 			table.Commit(commitStr),
@@ -244,7 +244,7 @@ func versionListAction(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("get app config: %w", err)
 	}
 
-	tagPrefix := appConfig.Git.TagPrefix
+	tagPrefix := appConfig.Prefix
 	tagger := git.NewTagger(repoDir, tagPrefix, false)
 
 	// Get all tags
@@ -387,23 +387,23 @@ func versionNextAction(ctx context.Context, cmd *cli.Command) error {
 	// Override config with flags
 	scheme := cmd.String("scheme")
 	if scheme == "" {
-		scheme = appConfig.Version.Scheme
+		scheme = appConfig.Scheme
 	}
 
-	prefix := appConfig.Version.Prefix
+	prefix := appConfig.Prefix
 	calverFormat := cmd.String("calver-format")
 	if calverFormat == "" {
-		calverFormat = appConfig.Version.CalVerFormat
+		calverFormat = appConfig.CalVerFormat
 	}
 
 	pre := cmd.String("pre")
 	if pre == "" {
-		pre = appConfig.Version.Pre
+		pre = appConfig.Pre
 	}
 
 	meta := cmd.String("meta")
 	if meta == "" {
-		meta = appConfig.Version.Meta
+		meta = appConfig.Meta
 	}
 
 	bumpStr := cmd.String("bump")

@@ -28,14 +28,10 @@ forge bump --bump major
 
 ### Version Prefix
 
-The `prefix` field adds a prefix to the version string displayed in outputs. The `git.tag_prefix` field determines the actual git tag prefix:
+The `prefix` field determines the git tag prefix:
 
 ```yaml
-version:
-  prefix: v        # Display: v1.2.3
-
-git:
-  tag_prefix: v    # Git tag: v1.2.3
+prefix: v    # Git tag: v1.2.3
 ```
 
 ## Calendar Versioning (CalVer)
@@ -43,10 +39,10 @@ git:
 CalVer uses date-based version numbers. This is useful for projects with regular release cadences where "compatibility" isn't the primary concern.
 
 ```yaml
-version:
-  scheme: calver
-  prefix: v
-  calver_format: "2006.WW"
+scheme: calver
+prefix: v
+calver_format: "2006.WW"
+default_branch: main
 ```
 
 ### Supported Formats
@@ -86,11 +82,10 @@ The `pre` (prerelease) and `meta` (build metadata) options are in early alpha an
 :::
 
 ```yaml
-version:
-  scheme: semver
-  prefix: v
-  pre: "rc.1"           # → v1.2.3-rc.1
-  meta: "build.456"     # → v1.2.3+build.456
+scheme: semver
+prefix: v
+pre: "rc.1"           # → v1.2.3-rc.1
+meta: "build.456"     # → v1.2.3+build.456
 ```
 
 These can also be set via CLI flags:
@@ -119,18 +114,15 @@ In a monorepo, each app can use a different versioning scheme:
 defaultApp: api
 
 api:
-  version:
-    scheme: semver
-    prefix: v
-  git:
-    tag_prefix: api/v
+  scheme: semver
+  prefix: api/v
+  default_branch: main
 
 worker:
-  version:
-    scheme: calver
-    calver_format: "2006.WW"
-  git:
-    tag_prefix: worker/v
+  scheme: calver
+  calver_format: "2006.WW"
+  prefix: worker/v
+  default_branch: main
 ```
 
 See [Monorepo Setup](./monorepo) for more details.

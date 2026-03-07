@@ -119,7 +119,7 @@ func hotfixCreateAction(ctx context.Context, cmd *cli.Command) error {
 	hotfixCfg := appConfig.GetHotfixConfig()
 
 	// 8. Create branch
-	tagger := git.NewTagger(repoDir, appConfig.Git.TagPrefix, dryRun)
+	tagger := git.NewTagger(repoDir, appConfig.Prefix, dryRun)
 	checkout := !cmd.Bool("no-checkout")
 
 	branchName, err := tagger.CreateHotfixBranch(ctx, baseTag, hotfixCfg.BranchPrefix, checkout)
@@ -251,7 +251,7 @@ func hotfixBumpAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Create tagger
-	tagger := git.NewTagger(repoDir, appConfig.Git.TagPrefix, dryRun)
+	tagger := git.NewTagger(repoDir, appConfig.Prefix, dryRun)
 
 	// Get next hotfix tag
 	nextTag, seq, err := tagger.GetNextHotfixTag(ctx, baseTag, hotfixCfg.Suffix)
@@ -286,7 +286,7 @@ func hotfixBumpAction(ctx context.Context, cmd *cli.Command) error {
 	// Output result
 	result := HotfixBumpOutput{
 		Tag:      nextTag,
-		Version:  strings.TrimPrefix(nextTag, appConfig.Git.TagPrefix),
+		Version:  strings.TrimPrefix(nextTag, appConfig.Prefix),
 		BaseTag:  baseTag,
 		Sequence: seq,
 		Branch:   currentBranch,
@@ -338,7 +338,7 @@ func quickHotfixBump(ctx context.Context, cmd *cli.Command, baseTag string, out 
 	hotfixCfg := appConfig.GetHotfixConfig()
 
 	// Create branch
-	tagger := git.NewTagger(repoDir, appConfig.Git.TagPrefix, dryRun)
+	tagger := git.NewTagger(repoDir, appConfig.Prefix, dryRun)
 	branchName, err := tagger.CreateHotfixBranch(ctx, baseTag, hotfixCfg.BranchPrefix, true)
 	if err != nil {
 		return fmt.Errorf("create hotfix branch: %w", err)
@@ -386,7 +386,7 @@ func quickHotfixBump(ctx context.Context, cmd *cli.Command, baseTag string, out 
 	// Output result
 	result := HotfixBumpOutput{
 		Tag:      nextTag,
-		Version:  strings.TrimPrefix(nextTag, appConfig.Git.TagPrefix),
+		Version:  strings.TrimPrefix(nextTag, appConfig.Prefix),
 		BaseTag:  baseTag,
 		Sequence: seq,
 		Branch:   branchName,
@@ -461,7 +461,7 @@ func hotfixStatusAction(ctx context.Context, cmd *cli.Command) error {
 			result.BaseTag, _ = git.ExtractTagFromBranch(currentBranch, hotfixCfg.BranchPrefix)
 
 			// Get hotfix info
-			tagger := git.NewTagger(repoDir, app.Git.TagPrefix, false)
+			tagger := git.NewTagger(repoDir, app.Prefix, false)
 			nextTag, seq, _ := tagger.GetNextHotfixTag(ctx, result.BaseTag, hotfixCfg.Suffix)
 			result.NextHotfix = nextTag
 			result.HotfixCount = seq - 1
@@ -483,7 +483,7 @@ func hotfixStatusAction(ctx context.Context, cmd *cli.Command) error {
 			if git.IsHotfixBranch(branch, hotfixCfg.BranchPrefix) {
 				baseTag, _ := git.ExtractTagFromBranch(branch, hotfixCfg.BranchPrefix)
 
-				tagger := git.NewTagger(repoDir, app.Git.TagPrefix, false)
+				tagger := git.NewTagger(repoDir, app.Prefix, false)
 				_, seq, _ := tagger.GetNextHotfixTag(ctx, baseTag, hotfixCfg.Suffix)
 				count := seq - 1
 
@@ -590,7 +590,7 @@ func hotfixListAction(ctx context.Context, cmd *cli.Command) error {
 	hotfixCfg := appConfig.GetHotfixConfig()
 
 	// List all hotfix tags - we'll call the GetNextHotfixTag to get them
-	tagger := git.NewTagger(repoDir, appConfig.Git.TagPrefix, false)
+	tagger := git.NewTagger(repoDir, appConfig.Prefix, false)
 
 	// Get all tags and filter for hotfix pattern
 	allTagsInfo, err := tagger.ListAllTags(ctx)
