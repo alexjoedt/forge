@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/alexjoedt/forge/internal/run"
+	"github.com/alexjoedt/forge/internal/testutil"
 	"github.com/alexjoedt/forge/internal/version"
 )
 
@@ -239,26 +240,6 @@ func TestParseHotfixSequence(t *testing.T) {
 	}
 }
 
-// initTestRepo creates a temporary git repository with an initial empty commit.
-func initTestRepo(t *testing.T) string {
-	t.Helper()
-	dir := t.TempDir()
-	ctx := context.Background()
-	cmds := [][]string{
-		{"git", "init"},
-		{"git", "config", "user.email", "test@example.com"},
-		{"git", "config", "user.name", "Test User"},
-		{"git", "commit", "--allow-empty", "-m", "initial commit"},
-	}
-	for _, args := range cmds {
-		r := run.CmdInDir(ctx, dir, args[0], args[1:]...)
-		if !r.Success() {
-			t.Fatalf("repo setup %v failed: %s", args, r.Stderr)
-		}
-	}
-	return dir
-}
-
 // addAnnotatedTag creates an annotated tag in the test repo.
 func addAnnotatedTag(t *testing.T, dir, tag string) {
 	t.Helper()
@@ -385,7 +366,7 @@ func TestCalculatePreRelease(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			dir := initTestRepo(t)
+			dir := testutil.InitRepo(t, "")
 			for _, tag := range tt.tags {
 				addAnnotatedTag(t, dir, tag)
 			}

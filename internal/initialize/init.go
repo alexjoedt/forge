@@ -81,9 +81,9 @@ func Init(ctx context.Context, opts Options) error {
 
 	if opts.DryRun {
 		logger.Infof("dry-run: would create config file at %s", outputPath)
-		fmt.Println("---")
-		fmt.Println(content)
-		fmt.Println("---")
+		logger.Println("---")
+		logger.Println(content)
+		logger.Println("---")
 		return nil
 	}
 
@@ -148,9 +148,9 @@ func InitWithCustomConfig(ctx context.Context, cfg *config.AppConfig, opts Optio
 
 	if opts.DryRun {
 		logger.Infof("dry-run: would create config file at %s", outputPath)
-		fmt.Println("---")
-		fmt.Println(string(data))
-		fmt.Println("---")
+		logger.Println("---")
+		logger.Println(string(data))
+		logger.Println("---")
 		return nil
 	}
 

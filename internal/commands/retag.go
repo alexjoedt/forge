@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/alexjoedt/forge/internal/config"
 	"github.com/alexjoedt/forge/internal/git"
@@ -148,7 +147,8 @@ func retagAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if !dryRun {
-		if interactive.IsInteractive() && !yes {
+		isInteractive := interactive.IsInteractive() && !out.IsJSON()
+		if isInteractive && !yes {
 			preview := fmt.Sprintf("  from  %s\n  to    %s", fromCommit[:7], toCommit[:7])
 			confirmed, err := interactive.PromptConfirmation(
 				fmt.Sprintf("Move tag %s?", tag),
@@ -158,10 +158,10 @@ func retagAction(ctx context.Context, cmd *cli.Command) error {
 				return fmt.Errorf("confirmation: %w", err)
 			}
 			if !confirmed {
-				fmt.Println("Aborted.")
+				fmt.Fprintln(out.Writer(), "Aborted.")
 				return nil
 			}
-		} else if !interactive.IsInteractive() && !yes {
+		} else if !isInteractive && !yes {
 			return &ForgeError{
 				Title:       "Confirmation required",
 				Description: "Moving a tag is a destructive operation that cannot run unattended without --yes.",
@@ -199,19 +199,19 @@ func retagAction(ctx context.Context, cmd *cli.Command) error {
 
 	if dryRun {
 		fmt.Fprintf(
-			os.Stdout,
+			out.Writer(),
 			"dry-run: would move tag %s\n  from  %s\n  to    %s\n",
 			tag,
 			fromCommit[:7],
 			toCommit[:7],
 		)
 		if push {
-			fmt.Fprintf(os.Stdout, "dry-run: would force-push tag %s to origin\n", tag)
+			fmt.Fprintf(out.Writer(), "dry-run: would force-push tag %s to origin\n", tag)
 		}
 	} else {
-		fmt.Fprintf(os.Stdout, "moved tag %s\n  from  %s\n  to    %s\n", tag, fromCommit[:7], toCommit[:7])
+		fmt.Fprintf(out.Writer(), "moved tag %s\n  from  %s\n  to    %s\n", tag, fromCommit[:7], toCommit[:7])
 		if push {
-			fmt.Fprintf(os.Stdout, "force-pushed tag %s to origin\n", tag)
+			fmt.Fprintf(out.Writer(), "force-pushed tag %s to origin\n", tag)
 		}
 	}
 
