@@ -6,9 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/alexjoedt/forge/internal/config"
 	"github.com/alexjoedt/forge/internal/log"
-	"gopkg.in/yaml.v3"
 )
 
 const multiAppConfigHeader = `# Forge Multi-App Configuration

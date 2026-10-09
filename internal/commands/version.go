@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/urfave/cli/v3"
+
 	"github.com/alexjoedt/forge/internal/config"
 	"github.com/alexjoedt/forge/internal/git"
 	"github.com/alexjoedt/forge/internal/log"
 	"github.com/alexjoedt/forge/internal/output"
 	"github.com/alexjoedt/forge/internal/table"
 	"github.com/alexjoedt/forge/internal/version"
-	"github.com/urfave/cli/v3"
 )
 
 // Version returns the version command that prints the current version based on the last valid git tag.

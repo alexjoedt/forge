@@ -50,8 +50,7 @@ func (m selectionModel) Init() tea.Cmd {
 }
 
 func (m selectionModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch msg.String() {
 		case "ctrl+c", "q", "esc":
 			m.canceled = true
@@ -147,7 +146,10 @@ func PromptBumpType(currentVersion string, choices []BumpChoice) (*BumpChoice, e
 		return nil, fmt.Errorf("error running prompt: %w", err)
 	}
 
-	result := finalModel.(selectionModel)
+	result, ok := finalModel.(selectionModel)
+	if !ok {
+		return nil, fmt.Errorf("unexpected prompt model %T", finalModel)
+	}
 	if result.canceled {
 		return nil, fmt.Errorf("selection canceled")
 	}
@@ -169,8 +171,7 @@ func (m confirmationModel) Init() tea.Cmd {
 }
 
 func (m confirmationModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
+	if msg, ok := msg.(tea.KeyMsg); ok {
 		switch msg.String() {
 		case "ctrl+c", "q", "esc":
 			m.canceled = true
@@ -228,7 +229,10 @@ func PromptConfirmation(question string, preview string) (bool, error) {
 		return false, fmt.Errorf("error running prompt: %w", err)
 	}
 
-	result := finalModel.(confirmationModel)
+	result, ok := finalModel.(confirmationModel)
+	if !ok {
+		return false, fmt.Errorf("unexpected prompt model %T", finalModel)
+	}
 	if result.canceled {
 		return false, fmt.Errorf("confirmation canceled")
 	}

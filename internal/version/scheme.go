@@ -149,7 +149,8 @@ func ParseCalVer(s string) (*Version, error) {
 	//                if we have 3 parts, check if the 3rd part looks like a sequence (small number)
 	//                if we have 4 parts, it's date-based with sequence
 
-	if len(dateParts) == 2 {
+	switch len(dateParts) {
+	case 2:
 		// YYYY.WW (week format without sequence)
 		// Only accept if second part is > 12 (definitely a week, not a month)
 		weekNum, err := strconv.Atoi(dateParts[1])
@@ -160,7 +161,7 @@ func ParseCalVer(s string) (*Version, error) {
 			)
 		}
 		v.CalVerDate = strings.Join(dateParts, ".")
-	} else if len(dateParts) == 3 {
+	case 3:
 		// Could be either:
 		// 1. YYYY.MM.DD (date format without sequence)
 		// 2. YYYY.WW.SEQUENCE (week format with sequence)
@@ -188,7 +189,7 @@ func ParseCalVer(s string) (*Version, error) {
 			// Invalid numbers or format, assume date format
 			v.CalVerDate = strings.Join(dateParts[:3], ".")
 		}
-	} else if len(dateParts) == 4 {
+	case 4:
 		// YYYY.MM.DD.SEQUENCE (date format with sequence)
 		v.CalVerDate = strings.Join(dateParts[:3], ".")
 		seq, err := strconv.Atoi(dateParts[3])
@@ -196,7 +197,7 @@ func ParseCalVer(s string) (*Version, error) {
 			return nil, fmt.Errorf("invalid calver sequence: %w", err)
 		}
 		v.CalVerSequence = seq
-	} else {
+	default:
 		return nil, fmt.Errorf("invalid calver format: %s", s)
 	}
 
@@ -401,19 +402,19 @@ func Compare(a, b *Version) int {
 
 // comparePreRelease compares two prerelease strings identifier by identifier (spec §11.4).
 func comparePreRelease(a, b string) int {
-	aIds := strings.Split(a, ".")
-	bIds := strings.Split(b, ".")
-	n := len(aIds)
-	if len(bIds) < n {
-		n = len(bIds)
+	aIDs := strings.Split(a, ".")
+	bIDs := strings.Split(b, ".")
+	n := len(aIDs)
+	if len(bIDs) < n {
+		n = len(bIDs)
 	}
 	for i := 0; i < n; i++ {
-		if c := compareIdentifier(aIds[i], bIds[i]); c != 0 {
+		if c := compareIdentifier(aIDs[i], bIDs[i]); c != 0 {
 			return c
 		}
 	}
 	// All common identifiers equal; more fields = higher precedence (spec §11.4.4).
-	return cmpInt(len(aIds), len(bIds))
+	return cmpInt(len(aIDs), len(bIDs))
 }
 
 // compareIdentifier compares two individual prerelease identifiers per spec §11.4.1.
@@ -498,7 +499,7 @@ func ValidateSingleIdentifier(id string) error {
 func isValidIdentifierChars(s string) bool {
 	for i := 0; i < len(s); i++ {
 		c := s[i]
-		if !((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '-') {
+		if (c < '0' || c > '9') && (c < 'A' || c > 'Z') && (c < 'a' || c > 'z') && c != '-' {
 			return false
 		}
 	}

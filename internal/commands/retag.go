@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/urfave/cli/v3"
+
 	"github.com/alexjoedt/forge/internal/config"
 	"github.com/alexjoedt/forge/internal/git"
 	"github.com/alexjoedt/forge/internal/interactive"
 	"github.com/alexjoedt/forge/internal/log"
 	"github.com/alexjoedt/forge/internal/output"
-	"github.com/urfave/cli/v3"
 )
 
 // Retag returns the retag command that moves an existing tag to a different commit.

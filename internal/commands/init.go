@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/urfave/cli/v3"
+
 	"github.com/alexjoedt/forge/internal/initialize"
 	"github.com/alexjoedt/forge/internal/log"
 	"github.com/alexjoedt/forge/internal/output"
-	"github.com/urfave/cli/v3"
 )
 
 // Init returns the init command that initializes a new forge.yaml configuration file.

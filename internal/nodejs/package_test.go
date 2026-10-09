@@ -100,10 +100,8 @@ func TestUpdater_FindPackageJSON(t *testing.T) {
 				if got != wantPath {
 					t.Errorf("FindPackageJSON() = %v, want %v", got, wantPath)
 				}
-			} else {
-				if got != "" {
-					t.Errorf("FindPackageJSON() = %v, want empty string", got)
-				}
+			} else if got != "" {
+				t.Errorf("FindPackageJSON() = %v, want empty string", got)
 			}
 		})
 	}

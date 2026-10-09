@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/urfave/cli/v3"
+
 	"github.com/alexjoedt/forge/internal/changelog"
 	"github.com/alexjoedt/forge/internal/config"
 	"github.com/alexjoedt/forge/internal/log"
 	"github.com/alexjoedt/forge/internal/output"
-	"github.com/urfave/cli/v3"
 )
 
 // Changelog returns the changelog command.

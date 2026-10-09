@@ -7,8 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/alexjoedt/forge/internal/log"
 	"gopkg.in/yaml.v3"
+
+	"github.com/alexjoedt/forge/internal/log"
 )
 
 type Config struct {
@@ -20,14 +21,14 @@ type Config struct {
 
 // AppConfig represents the forge.yaml configuration file structure.
 type AppConfig struct {
-	Scheme        string        `yaml:"scheme"`                    // "semver" or "calver"
-	Prefix        string        `yaml:"prefix"`                    // Tag prefix, e.g., "v", "api/v"
-	DefaultBranch string        `yaml:"default_branch"`            // e.g., "main"
-	CalVerFormat  string        `yaml:"calver_format,omitempty"`   // e.g., "2006.01.02", "2006.WW"
-	Pre           string        `yaml:"pre,omitempty"`             // [ALPHA] prerelease identifier
-	Meta          string        `yaml:"meta,omitempty"`            // [ALPHA] build metadata
-	Hotfix        *HotfixConfig `yaml:"hotfix,omitempty"`          // Hotfix workflow settings
-	NodeJS        NodeJSConfig  `yaml:"nodejs,omitempty"`          // Node.js package.json sync
+	Scheme        string        `yaml:"scheme"`                  // "semver" or "calver"
+	Prefix        string        `yaml:"prefix"`                  // Tag prefix, e.g., "v", "api/v"
+	DefaultBranch string        `yaml:"default_branch"`          // e.g., "main"
+	CalVerFormat  string        `yaml:"calver_format,omitempty"` // e.g., "2006.01.02", "2006.WW"
+	Pre           string        `yaml:"pre,omitempty"`           // [ALPHA] prerelease identifier
+	Meta          string        `yaml:"meta,omitempty"`          // [ALPHA] build metadata
+	Hotfix        *HotfixConfig `yaml:"hotfix,omitempty"`        // Hotfix workflow settings
+	NodeJS        NodeJSConfig  `yaml:"nodejs,omitempty"`        // Node.js package.json sync
 }
 
 // HotfixConfig holds hotfix workflow configuration.
@@ -80,7 +81,7 @@ func (ac *AppConfig) Validate() error {
 	if ac.DefaultBranch == "" {
 		return fmt.Errorf("default_branch is required\n\n" +
 			"  Add to your forge.yaml:\n" +
-			"    default_branch: main  # or master, develop, etc.")
+			"    default_branch: main  # or master, develop")
 	}
 
 	// CalVer format required for CalVer scheme
@@ -183,7 +184,7 @@ func Load(path string) (*Config, error) {
 			"    scheme: semver\n" +
 			"    prefix: v\n" +
 			"    default_branch: main\n\n" +
-			"  Run 'forge init' to generate a new configuration file.")
+			"  Run 'forge init' to generate a new configuration file")
 	}
 
 	// Check if this is a multi-app config by looking for defaultApp or multiple app configs
@@ -213,7 +214,7 @@ func Load(path string) (*Config, error) {
 					"      scheme: semver\n"+
 					"      prefix: v\n"+
 					"      default_branch: main\n\n"+
-					"  Run 'forge init' to generate a new configuration file.",
+					"  Run 'forge init' to generate a new configuration file",
 					key, key, key)
 			}
 			if _, hasScheme := val["scheme"]; hasScheme {

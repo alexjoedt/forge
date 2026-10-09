@@ -171,11 +171,9 @@ func Parse(ctx context.Context, repoDir, from, to string) (*Changelog, error) {
 			if body != "" {
 				bodyLines = append(bodyLines, body)
 			}
-		} else {
+		} else if currentCommit != nil {
 			// This is a body continuation line
-			if currentCommit != nil {
-				bodyLines = append(bodyLines, line)
-			}
+			bodyLines = append(bodyLines, line)
 		}
 	}
 

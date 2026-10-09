@@ -4,11 +4,12 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/urfave/cli/v3"
+
 	"github.com/alexjoedt/forge/internal/config"
 	"github.com/alexjoedt/forge/internal/git"
 	"github.com/alexjoedt/forge/internal/log"
 	"github.com/alexjoedt/forge/internal/output"
-	"github.com/urfave/cli/v3"
 )
 
 // Validate returns the validate command that checks forge.yaml and git state
@@ -107,21 +108,23 @@ func validateAction(ctx context.Context, cmd *cli.Command) error {
 		// Check for existing tags
 		appTagger := git.NewTagger(repoDir, appConfig.Prefix, false)
 		tags, err := appTagger.ListAllTags(ctx)
-		if err != nil {
+		switch {
+		case err != nil:
 			warnings = append(warnings, fmt.Sprintf("Failed to list tags: %v", err))
-		} else if len(tags) == 0 {
+		case len(tags) == 0:
 			warnings = append(warnings, "No version tags found in repository (use 'forge bump' to create first tag)")
-		} else {
+		default:
 			logger.Debugf("✓ Found %d version tag(s)", len(tags))
 		}
 
 		// Check working directory state
 		isDirty, err := appTagger.HasUncommittedChanges(ctx)
-		if err != nil {
+		switch {
+		case err != nil:
 			warnings = append(warnings, fmt.Sprintf("Failed to check working tree: %v", err))
-		} else if isDirty {
+		case isDirty:
 			warnings = append(warnings, "Working directory has uncommitted changes")
-		} else {
+		default:
 			logger.Debugf("✓ Working directory is clean")
 		}
 	}

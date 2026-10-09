@@ -63,7 +63,7 @@ func (u *Updater) FindPackageJSON(ctx context.Context, path string) (string, err
 }
 
 // ReadVersion reads the current version from package.json.
-func (u *Updater) ReadVersion(ctx context.Context, packagePath string) (string, error) {
+func (u *Updater) ReadVersion(_ context.Context, packagePath string) (string, error) {
 	data, err := os.ReadFile(packagePath)
 	if err != nil {
 		return "", fmt.Errorf("read package.json: %w", err)
@@ -159,6 +159,7 @@ func (u *Updater) UpdateVersion(ctx context.Context, packagePath, newVersion str
 	}
 
 	// Write back the modified content
+	//nolint:gosec // G703: packagePath is the package.json forge resolved in the repo it was pointed at
 	if err := os.WriteFile(packagePath, []byte(newContent), 0o600); err != nil {
 		return false, fmt.Errorf("write package.json: %w", err)
 	}

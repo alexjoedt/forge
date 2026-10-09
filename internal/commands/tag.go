@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/urfave/cli/v3"
+
 	"github.com/alexjoedt/forge/internal/config"
 	"github.com/alexjoedt/forge/internal/git"
 	"github.com/alexjoedt/forge/internal/interactive"
@@ -12,7 +14,6 @@ import (
 	"github.com/alexjoedt/forge/internal/nodejs"
 	"github.com/alexjoedt/forge/internal/output"
 	"github.com/alexjoedt/forge/internal/version"
-	"github.com/urfave/cli/v3"
 )
 
 //nolint:gochecknoglobals

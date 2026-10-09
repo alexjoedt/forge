@@ -6,11 +6,12 @@ import (
 	"os"
 	"strings"
 
+	"github.com/urfave/cli/v3"
+
 	"github.com/alexjoedt/forge/internal/config"
 	"github.com/alexjoedt/forge/internal/git"
 	"github.com/alexjoedt/forge/internal/log"
 	"github.com/alexjoedt/forge/internal/output"
-	"github.com/urfave/cli/v3"
 )
 
 // Hotfix returns the hotfix command group.
@@ -430,7 +431,7 @@ type ActiveHotfix struct {
 	Count   int    `json:"count"`
 }
 
-func hotfixStatusAction(ctx context.Context, cmd *cli.Command) error {
+func hotfixStatusAction(ctx context.Context, _ *cli.Command) error {
 	out := output.FromContext(ctx)
 
 	repoDir, err := os.Getwd()
