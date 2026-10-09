@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 )
 
@@ -22,13 +23,22 @@ const (
 // Manager handles output formatting.
 type Manager struct {
 	format Format
+	out    io.Writer
+	errOut io.Writer
 }
 
-// New creates a new output manager.
-func New(format Format) *Manager {
+// New creates a new output manager writing results to out and errors to errOut.
+func New(format Format, out, errOut io.Writer) *Manager {
 	return &Manager{
 		format: format,
+		out:    out,
+		errOut: errOut,
 	}
+}
+
+// Writer returns the writer for regular command output.
+func (m *Manager) Writer() io.Writer {
+	return m.out
 }
 
 // IsJSON returns true if the output format is JSON.
@@ -39,7 +49,7 @@ func (m *Manager) IsJSON() bool {
 // Print outputs the result in the appropriate format.
 func (m *Manager) Print(result any) error {
 	if m.format == FormatJSON {
-		encoder := json.NewEncoder(os.Stdout)
+		encoder := json.NewEncoder(m.out)
 		encoder.SetIndent("", "  ")
 		if err := encoder.Encode(result); err != nil {
 			return fmt.Errorf("encode JSON output: %w", err)
@@ -60,7 +70,7 @@ func FromContext(ctx context.Context) *Manager {
 	if manager, ok := ctx.Value(outputKey).(*Manager); ok {
 		return manager
 	}
-	return New(FormatText)
+	return New(FormatText, os.Stdout, os.Stderr)
 }
 
 // TagResult represents the result of a bump command (creates a git tag).
@@ -133,14 +143,14 @@ func (m *Manager) PrintError(err error, message string) {
 			Error:   err.Error(),
 			Message: message,
 		}
-		encoder := json.NewEncoder(os.Stderr)
+		encoder := json.NewEncoder(m.errOut)
 		encoder.SetIndent("", "  ")
 		_ = encoder.Encode(result)
 	} else {
 		if message != "" {
-			fmt.Fprintf(os.Stderr, "%s: %v\n", message, err)
+			fmt.Fprintf(m.errOut, "%s: %v\n", message, err)
 		} else {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			fmt.Fprintf(m.errOut, "error: %v\n", err)
 		}
 	}
 }

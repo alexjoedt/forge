@@ -3,7 +3,6 @@ package commands
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/alexjoedt/forge/internal/config"
@@ -101,11 +100,11 @@ func versionAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Enhanced single-app display
-	fmt.Fprintf(os.Stdout, "Current Version: %s\n", table.CurrentVersion(versionStr))
-	fmt.Fprintf(os.Stdout, "Scheme:          %s\n", table.Scheme(appConfig.Scheme))
-	fmt.Fprintf(os.Stdout, "Commit:          %s\n", table.Commit(commit))
+	fmt.Fprintf(out.Writer(), "Current Version: %s\n", table.CurrentVersion(versionStr))
+	fmt.Fprintf(out.Writer(), "Scheme:          %s\n", table.Scheme(appConfig.Scheme))
+	fmt.Fprintf(out.Writer(), "Commit:          %s\n", table.Commit(commit))
 	if dirty {
-		fmt.Fprintf(os.Stdout, "Status:          %s\n", table.Date("dirty (uncommitted changes)"))
+		fmt.Fprintf(out.Writer(), "Status:          %s\n", table.Date("dirty (uncommitted changes)"))
 	}
 
 	// For SemVer repos, show prerelease status and latest stable tag if applicable.
@@ -113,10 +112,10 @@ func versionAction(ctx context.Context, cmd *cli.Command) error {
 		if latestTag, ltErr := tagger.LatestTag(ctx); ltErr == nil && latestTag != "" {
 			vStr := version.StripPrefix(latestTag, tagPrefix)
 			if parsedVer, pErr := version.ParseSemVer(vStr); pErr == nil && parsedVer.IsPrerelease() {
-				fmt.Printf("Prerelease:      %s\n", table.Scheme("yes"))
+				fmt.Fprintf(out.Writer(), "Prerelease:      %s\n", table.Scheme("yes"))
 				if stableTag, sErr := tagger.LatestStableTag(ctx); sErr == nil && stableTag != "" &&
 					stableTag != latestTag {
-					fmt.Printf("Latest Stable:   %s\n", table.CurrentVersion(stableTag))
+					fmt.Fprintf(out.Writer(), "Latest Stable:   %s\n", table.CurrentVersion(stableTag))
 				}
 			}
 		}
@@ -192,7 +191,7 @@ func versionMultiAppAction(ctx context.Context, cfg *config.Config, repoDir stri
 	}
 
 	// Print table
-	fmt.Fprintln(os.Stdout, tbl.Render())
+	fmt.Fprintln(out.Writer(), tbl.Render())
 
 	return nil
 }
@@ -261,7 +260,7 @@ func versionListAction(ctx context.Context, cmd *cli.Command) error {
 				Count:    0,
 			})
 		}
-		fmt.Fprintln(os.Stdout, "No version tags found")
+		fmt.Fprintln(out.Writer(), "No version tags found")
 		return nil
 	}
 
@@ -314,7 +313,7 @@ func versionListAction(ctx context.Context, cmd *cli.Command) error {
 		)
 	}
 
-	fmt.Fprintln(os.Stdout, tbl.Render())
+	fmt.Fprintln(out.Writer(), tbl.Render())
 
 	return nil
 }
@@ -465,10 +464,10 @@ func versionNextAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Text output
-	fmt.Fprintf(os.Stdout, "Current:  %s\n", currentVersion)
-	fmt.Fprintf(os.Stdout, "Next:     %s\n", nextVersion.String())
-	fmt.Fprintf(os.Stdout, "Tag:      %s\n", tag)
-	fmt.Fprintf(os.Stdout, "Scheme:   %s\n", scheme)
+	fmt.Fprintf(out.Writer(), "Current:  %s\n", currentVersion)
+	fmt.Fprintf(out.Writer(), "Next:     %s\n", nextVersion.String())
+	fmt.Fprintf(out.Writer(), "Tag:      %s\n", tag)
+	fmt.Fprintf(out.Writer(), "Scheme:   %s\n", scheme)
 
 	return nil
 }

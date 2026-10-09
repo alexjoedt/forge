@@ -163,7 +163,7 @@ func changelogAction(ctx context.Context, cmd *cli.Command) error {
 		}
 		logger.Success("Changelog written to %s", output)
 	} else {
-		fmt.Fprintln(os.Stdout, formatted)
+		fmt.Fprintln(cmd.Root().Writer, formatted)
 	}
 
 	return nil
