@@ -1,34 +1,17 @@
 package commands
 
 import (
-	"encoding/json"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
-	"github.com/alexjoedt/forge/internal/output"
 	"github.com/alexjoedt/forge/internal/testutil"
 	"github.com/alexjoedt/forge/internal/version"
 )
 
 func calverConfig(format string) string {
 	return "default_branch: main\nscheme: calver\nprefix: v\ncalver_format: " + format + "\n"
-}
-
-func bumpJSON(t *testing.T, dir string) string {
-	t.Helper()
-	stdout, stderr, err := runForge(t, "bump", "--json", "--repo-dir", dir)
-	if err != nil {
-		t.Fatalf("bump: %v (stderr: %s)", err, stderr)
-	}
-	var got output.TagResult
-	if jsonErr := json.Unmarshal([]byte(stdout), &got); jsonErr != nil {
-		t.Fatalf("decode JSON %q: %v", stdout, jsonErr)
-	}
-	if got.Tag == "" || got.Version != got.Tag {
-		t.Fatalf("got %+v, want tag and version set", got)
-	}
-	return got.Tag
 }
 
 func TestBumpCalver(t *testing.T) {
@@ -49,9 +32,19 @@ func TestBumpCalver(t *testing.T) {
 				t.Errorf("first tag = %s, want one of %v", first, want)
 			}
 
+			parsed, err := version.ParseCalVer(strings.TrimPrefix(first, "v"))
+			if err != nil {
+				t.Fatalf("parse %s: %v", first, err)
+			}
+			before = time.Now()
 			second := bumpJSON(t, dir)
-			if second == first {
-				t.Errorf("second bump duplicated %s", first)
+			after = time.Now()
+			want = []string{
+				"v" + version.NextCalVer(parsed, format, before).String(),
+				"v" + version.NextCalVer(parsed, format, after).String(),
+			}
+			if !slices.Contains(want, second) {
+				t.Errorf("second tag = %s, want one of %v", second, want)
 			}
 			if tags := testutil.Tags(t, dir); len(tags) != 3 || !slices.Contains(tags, second) {
 				t.Errorf("tags = %v, want old, %s, %s", tags, first, second)

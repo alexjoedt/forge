@@ -73,3 +73,20 @@ func TestRunForgeCapturesLogger(t *testing.T) {
 		t.Errorf("stdout = %q, want the tag-created line", stdout)
 	}
 }
+
+// bumpJSON runs `forge bump --json` with extra args and returns the created tag.
+func bumpJSON(t *testing.T, dir string, args ...string) string {
+	t.Helper()
+	stdout, stderr, err := runForge(t, append([]string{"bump", "--json", "--repo-dir", dir}, args...)...)
+	if err != nil {
+		t.Fatalf("bump: %v (stderr: %s)", err, stderr)
+	}
+	var got output.TagResult
+	if jsonErr := json.Unmarshal([]byte(stdout), &got); jsonErr != nil {
+		t.Fatalf("decode JSON %q: %v", stdout, jsonErr)
+	}
+	if got.Tag == "" || got.Version != got.Tag {
+		t.Fatalf("got %+v, want tag and version set", got)
+	}
+	return got.Tag
+}
