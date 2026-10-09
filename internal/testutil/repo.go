@@ -13,10 +13,14 @@ import (
 
 // InitRepo creates a temporary git repository with a test identity and an
 // initial commit. A non-empty forgeYAML is written to forge.yaml and included
-// in that commit, so the working tree starts clean.
+// in that commit, so the working tree starts clean. Global and system git
+// config are disabled for the rest of the test, so tests using it cannot run
+// in parallel.
 func InitRepo(t *testing.T, forgeYAML string) string {
 	t.Helper()
 	dir := t.TempDir()
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_NOSYSTEM", "1")
 	Git(t, dir, "init", "-q", "-b", "main")
 	Git(t, dir, "config", "user.email", "test@example.com")
 	Git(t, dir, "config", "user.name", "Test User")

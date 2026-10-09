@@ -19,20 +19,14 @@ type contextKey string
 const loggerKey contextKey = "logger"
 
 //nolint:gochecknoglobals
-var DefaultLogger = New(false)
+var DefaultLogger = New(os.Stdout, false)
 
-// New creates a new Logger writing to stdout.
-func New(verbose bool) *Logger {
+// New creates a new Logger writing to w.
+func New(w io.Writer, verbose bool) *Logger {
 	return &Logger{
-		output:  os.Stdout,
+		output:  w,
 		verbose: verbose,
 	}
-}
-
-// Setup configures the DefaultLogger with the given verbosity without
-// reassigning the global logger instance.
-func Setup(verbose bool) {
-	DefaultLogger.verbose = verbose
 }
 
 // Verbosef logs a formatted message when verbose mode is enabled.

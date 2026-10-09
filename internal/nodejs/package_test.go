@@ -3,6 +3,7 @@ package nodejs
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -85,7 +86,7 @@ func TestUpdater_FindPackageJSON(t *testing.T) {
 			}
 
 			// Create updater
-			ctx := log.WithLogger(context.Background(), log.New(false))
+			ctx := log.WithLogger(context.Background(), log.New(io.Discard, false))
 			updater := NewUpdater(tmpDir, false)
 
 			// Find package.json
@@ -151,7 +152,7 @@ func TestUpdater_ReadVersion(t *testing.T) {
 				t.Fatalf("write file: %v", err)
 			}
 
-			ctx := log.WithLogger(context.Background(), log.New(false))
+			ctx := log.WithLogger(context.Background(), log.New(io.Discard, false))
 			updater := NewUpdater(tmpDir, false)
 
 			got, err := updater.ReadVersion(ctx, pkgPath)
@@ -252,7 +253,7 @@ func TestUpdater_UpdateVersion(t *testing.T) {
 				t.Fatalf("write file: %v", err)
 			}
 
-			ctx := log.WithLogger(context.Background(), log.New(false))
+			ctx := log.WithLogger(context.Background(), log.New(io.Discard, false))
 			updater := NewUpdater(tmpDir, tt.dryRun)
 
 			// Update version
@@ -378,7 +379,7 @@ func TestUpdater_Update(t *testing.T) {
 				}
 			}
 
-			ctx := log.WithLogger(context.Background(), log.New(false))
+			ctx := log.WithLogger(context.Background(), log.New(io.Discard, false))
 			updater := NewUpdater(tmpDir, false)
 
 			// Update

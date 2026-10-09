@@ -8,6 +8,7 @@ import (
 	"github.com/alexjoedt/forge/internal/changelog"
 	"github.com/alexjoedt/forge/internal/config"
 	"github.com/alexjoedt/forge/internal/log"
+	"github.com/alexjoedt/forge/internal/output"
 	"github.com/urfave/cli/v3"
 )
 
@@ -105,7 +106,7 @@ func changelogAction(ctx context.Context, cmd *cli.Command) error {
 	from := cmd.String("from")
 	to := cmd.String("to")
 	format := cmd.String("format")
-	output := cmd.String("output")
+	outFile := cmd.String("output")
 
 	// If no from tag specified, use latest tag.
 	if from == "" {
@@ -157,13 +158,13 @@ func changelogAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Output
-	if output != "" {
-		if err := os.WriteFile(output, []byte(formatted), 0o600); err != nil {
+	if outFile != "" {
+		if err := os.WriteFile(outFile, []byte(formatted), 0o600); err != nil {
 			return fmt.Errorf("write file: %w", err)
 		}
-		logger.Success("Changelog written to %s", output)
+		logger.Success("Changelog written to %s", outFile)
 	} else {
-		fmt.Fprintln(cmd.Root().Writer, formatted)
+		fmt.Fprintln(output.FromContext(ctx).Writer(), formatted)
 	}
 
 	return nil

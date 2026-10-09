@@ -147,7 +147,8 @@ func retagAction(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if !dryRun {
-		if interactive.IsInteractive() && !yes {
+		isInteractive := interactive.IsInteractive() && !out.IsJSON()
+		if isInteractive && !yes {
 			preview := fmt.Sprintf("  from  %s\n  to    %s", fromCommit[:7], toCommit[:7])
 			confirmed, err := interactive.PromptConfirmation(
 				fmt.Sprintf("Move tag %s?", tag),
@@ -160,7 +161,7 @@ func retagAction(ctx context.Context, cmd *cli.Command) error {
 				fmt.Fprintln(out.Writer(), "Aborted.")
 				return nil
 			}
-		} else if !interactive.IsInteractive() && !yes {
+		} else if !isInteractive && !yes {
 			return &ForgeError{
 				Title:       "Confirmation required",
 				Description: "Moving a tag is a destructive operation that cannot run unattended without --yes.",

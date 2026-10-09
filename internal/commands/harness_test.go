@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/urfave/cli/v3"
@@ -57,5 +58,18 @@ func TestVersionFlag(t *testing.T) {
 	}
 	if stdout != "forge version test\n" {
 		t.Errorf("stdout = %q", stdout)
+	}
+}
+
+func TestRunForgeCapturesLogger(t *testing.T) {
+	dir := testutil.InitRepo(t, semverConfig)
+	testutil.Git(t, dir, "tag", "-a", "v1.2.3", "-m", "v1.2.3")
+
+	stdout, stderr, err := runForge(t, "bump", "--bump", "patch", "--repo-dir", dir)
+	if err != nil {
+		t.Fatalf("forge bump: %v (stderr: %s)", err, stderr)
+	}
+	if !strings.Contains(stdout, "Tag created: v1.2.4") {
+		t.Errorf("stdout = %q, want the tag-created line", stdout)
 	}
 }

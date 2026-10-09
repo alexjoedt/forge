@@ -50,14 +50,15 @@ func Root(info BuildInfo) *cli.Command {
 			jsonOutput := c.Bool("json")
 			// When JSON output is enabled, suppress verbose logging.
 			verbose := c.Bool("verbose") && !jsonOutput
-			log.Setup(verbose)
 
-			format := output.FormatText
-			if jsonOutput {
-				format = output.FormatJSON
-			}
 			root := c.Root()
+			format, logOut := output.FormatText, root.Writer
+			if jsonOutput {
+				// Keep stdout pure JSON: log lines go to stderr.
+				format, logOut = output.FormatJSON, root.ErrWriter
+			}
 			ctx = output.WithManager(ctx, output.New(format, root.Writer, root.ErrWriter))
+			ctx = log.WithLogger(ctx, log.New(logOut, verbose))
 
 			return ctx, nil
 		},
