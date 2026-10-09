@@ -80,7 +80,6 @@ Examples:
 	}
 }
 
-//nolint:funlen
 func changelogAction(ctx context.Context, cmd *cli.Command) error {
 	logger := log.FromContext(ctx)
 	repoDir := "."
@@ -111,7 +110,7 @@ func changelogAction(ctx context.Context, cmd *cli.Command) error {
 
 	// If no from tag specified, use latest tag.
 	if from == "" {
-		//nolint:godox // TODO: Get latest tag from git
+		// TODO: Get latest tag from git
 		logger.Warnf("No --from tag specified, using all commits up to HEAD")
 	}
 

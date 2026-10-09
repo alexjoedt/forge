@@ -195,7 +195,6 @@ type HotfixBumpOutput struct {
 	Message  string `json:"message"`
 }
 
-//nolint:gocognit,nestif // command handler intentionally coordinates multiple steps/branches; further splitting would obscure the hotfix workflow
 func hotfixBumpAction(ctx context.Context, cmd *cli.Command) error {
 	logger := log.FromContext(ctx)
 	out := output.FromContext(ctx)
@@ -217,7 +216,7 @@ func hotfixBumpAction(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	currentBranch, err := git.GetCurrentBranch(repoDir)
+	currentBranch, err := git.GetCurrentBranch(ctx, repoDir)
 	if err != nil {
 		return err
 	}
@@ -444,7 +443,7 @@ func hotfixStatusAction(ctx context.Context, _ *cli.Command) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	currentBranch, err := git.GetCurrentBranch(repoDir)
+	currentBranch, err := git.GetCurrentBranch(ctx, repoDir)
 	if err != nil {
 		return err
 	}
@@ -476,7 +475,10 @@ func hotfixStatusAction(ctx context.Context, _ *cli.Command) error {
 	}
 
 	// List all active hotfix branches
-	branches, _ := git.ListBranches(repoDir)
+	branches, err := git.ListBranches(ctx, repoDir)
+	if err != nil {
+		return err
+	}
 	for _, app := range cfg.GetAllAppConfigs() {
 		hotfixCfg := app.GetHotfixConfig()
 
@@ -530,7 +532,6 @@ type HotfixListOutput struct {
 	Count    int      `json:"count"`
 }
 
-//nolint:gocognit,nestif // CLI handler has complex branching; keeping logic in one function is clearer
 func hotfixListAction(ctx context.Context, cmd *cli.Command) error {
 	out := output.FromContext(ctx)
 
@@ -550,7 +551,7 @@ func hotfixListAction(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		var currentBranch string
-		currentBranch, err = git.GetCurrentBranch(repoDir)
+		currentBranch, err = git.GetCurrentBranch(ctx, repoDir)
 		if err != nil {
 			return err
 		}

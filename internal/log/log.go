@@ -1,4 +1,3 @@
-//nolint:revive // package name "log" intentionally used for ergonomic import.
 package log
 
 import (
@@ -18,7 +17,6 @@ type contextKey string
 
 const loggerKey contextKey = "logger"
 
-//nolint:gochecknoglobals
 var DefaultLogger = New(os.Stdout, false)
 
 // New creates a new Logger writing to w.

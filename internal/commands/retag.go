@@ -55,7 +55,6 @@ func Retag() *cli.Command {
 	}
 }
 
-//nolint:gocognit,nestif // CLI handler requires branching and complexity; splitting would hurt readability
 func retagAction(ctx context.Context, cmd *cli.Command) error {
 	logger := log.FromContext(ctx)
 	out := output.FromContext(ctx)

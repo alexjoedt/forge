@@ -52,7 +52,6 @@ type Changelog struct {
 	ByType   map[CommitType][]Commit
 }
 
-//nolint:gochecknoglobals // compiled regexes and markers are immutable and reused across parses to avoid recompilation overhead
 var (
 	// conventionalRegex matches Conventional Commits format: type(scope): subject.
 	conventionalRegex = regexp.MustCompile(`^(?P<type>\w+)(?:\((?P<scope>[^)]+)\))?(?P<breaking>!)?: (?P<subject>.+)$`)
@@ -172,7 +171,7 @@ func Parse(ctx context.Context, repoDir, from, to string) (*Changelog, error) {
 				bodyLines = append(bodyLines, body)
 			}
 		} else if currentCommit != nil {
-			// This is a body continuation line
+			// Body continuation line; lines before the first commit header are dropped
 			bodyLines = append(bodyLines, line)
 		}
 	}
@@ -293,8 +292,6 @@ func GetTypeTitle(t CommitType) string {
 }
 
 // GetTypePriority returns the display priority for a commit type (lower = higher priority).
-//
-//nolint:mnd
 func GetTypePriority(t CommitType) int {
 	switch t {
 	case TypeFeat:

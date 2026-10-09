@@ -34,19 +34,17 @@ func NewUpdater(repoDir string, dryRun bool) *Updater {
 }
 
 // FindPackageJSON searches for package.json in the repository.
-// If path is provided, it uses that path (relative to repoDir).
+// If path is provided, it uses that path, which must stay inside repoDir.
 // Otherwise, it looks for package.json in the repository root.
 func (u *Updater) FindPackageJSON(ctx context.Context, path string) (string, error) {
 	logger := log.FromContext(ctx)
 
 	var packagePath string
 	if path != "" {
-		// Use provided path
-		if filepath.IsAbs(path) {
-			packagePath = path
-		} else {
-			packagePath = filepath.Join(u.repoDir, path)
+		if !filepath.IsLocal(path) {
+			return "", fmt.Errorf("package_path %q must be a relative path inside the repository", path)
 		}
+		packagePath = filepath.Join(u.repoDir, path)
 	} else {
 		// Look in repository root
 		packagePath = filepath.Join(u.repoDir, "package.json")
@@ -159,7 +157,7 @@ func (u *Updater) UpdateVersion(ctx context.Context, packagePath, newVersion str
 	}
 
 	// Write back the modified content
-	//nolint:gosec // G703: packagePath is the package.json forge resolved in the repo it was pointed at
+	//nolint:gosec // G703: FindPackageJSON confines packagePath to repoDir
 	if err := os.WriteFile(packagePath, []byte(newContent), 0o600); err != nil {
 		return false, fmt.Errorf("write package.json: %w", err)
 	}

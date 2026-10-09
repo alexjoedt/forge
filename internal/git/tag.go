@@ -56,8 +56,6 @@ func (t *Tagger) LatestTag(ctx context.Context) (string, error) {
 }
 
 // ParseLatestVersion returns the parsed version of the latest tag, or nil if no tag exists.
-//
-//nolint:nilnil // (nil, nil) represents "no existing tag"; callers rely on this sentinel instead of an error
 func (t *Tagger) ParseLatestVersion(ctx context.Context, scheme version.Scheme) (*version.Version, error) {
 	tag, err := t.LatestTag(ctx)
 	if err != nil {
@@ -121,8 +119,6 @@ func (t *Tagger) LatestStableTag(ctx context.Context) (string, error) {
 
 // ParseLatestStableVersion returns the parsed stable version from the latest stable tag.
 // Returns nil if no stable tags exist.
-//
-//nolint:nilnil // (nil, nil) intentionally signals "no stable tag" distinct from an error
 func (t *Tagger) ParseLatestStableVersion(ctx context.Context) (*version.Version, error) {
 	tag, err := t.LatestStableTag(ctx)
 	if err != nil {
@@ -679,8 +675,8 @@ func (t *Tagger) GetTagInfo(ctx context.Context, tagName string) (*TagInfo, erro
 // ============================================================================
 
 // GetCurrentBranch returns the currently checked out branch name.
-func GetCurrentBranch(repoDir string) (string, error) {
-	result := run.Cmd(context.Background(), "git", "-C", repoDir, "rev-parse", "--abbrev-ref", "HEAD")
+func GetCurrentBranch(ctx context.Context, repoDir string) (string, error) {
+	result := run.Cmd(ctx, "git", "-C", repoDir, "rev-parse", "--abbrev-ref", "HEAD")
 	if !result.Success() {
 		return "", fmt.Errorf("failed to get current branch: %s", result.Stderr)
 	}
@@ -782,8 +778,8 @@ func (t *Tagger) CreateHotfixTag(ctx context.Context, tag, message string) error
 }
 
 // ListBranches returns all branches in the repository.
-func ListBranches(repoDir string) ([]string, error) {
-	result := run.Cmd(context.Background(), "git", "-C", repoDir, "branch", "--format=%(refname:short)")
+func ListBranches(ctx context.Context, repoDir string) ([]string, error) {
+	result := run.Cmd(ctx, "git", "-C", repoDir, "branch", "--format=%(refname:short)")
 	if !result.Success() {
 		return nil, fmt.Errorf("failed to list branches: %s", result.Stderr)
 	}

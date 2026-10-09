@@ -8,7 +8,7 @@ import (
 	"github.com/alexjoedt/forge/internal/log"
 )
 
-//nolint:gochecknoglobals // set via ldflags at build time
+// Set via ldflags at build time.
 var (
 	// version is set via ldflags at build time.
 	version = "dev"

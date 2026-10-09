@@ -7,7 +7,6 @@ import (
 )
 
 var (
-	//nolint:gochecknoglobals
 	// Table styles.
 	headerStyle = lipgloss.NewStyle().
 			Bold(true).
@@ -73,8 +72,6 @@ func (t *Table) AddRow(cells ...string) {
 }
 
 // Render returns the formatted table as a string.
-//
-//nolint:gocognit // table rendering requires many branches for borders, alignment, and styling.
 func (t *Table) Render() string {
 	if len(t.Columns) == 0 {
 		return ""

@@ -283,7 +283,10 @@ func TestUpdater_UpdateVersion(t *testing.T) {
 				t.Fatalf("parse JSON: %v", err)
 			}
 
-			gotVersion := pkg["version"].(string)
+			gotVersion, ok := pkg["version"].(string)
+			if !ok {
+				t.Fatalf("version is %T, want string", pkg["version"])
+			}
 			if gotVersion != tt.wantVersion {
 				t.Errorf("version = %v, want %v", gotVersion, tt.wantVersion)
 			}
@@ -413,5 +416,16 @@ func TestUpdater_Update(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestUpdater_FindPackageJSON_RejectsPathOutsideRepo(t *testing.T) {
+	ctx := log.WithLogger(context.Background(), log.New(io.Discard, false))
+	updater := NewUpdater(t.TempDir(), false)
+
+	for _, p := range []string{"../package.json", "/etc/package.json", "a/../../package.json"} {
+		if _, err := updater.FindPackageJSON(ctx, p); err == nil {
+			t.Errorf("FindPackageJSON(%q) error = nil, want error", p)
+		}
 	}
 }

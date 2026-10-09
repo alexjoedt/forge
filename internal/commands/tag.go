@@ -16,7 +16,6 @@ import (
 	"github.com/alexjoedt/forge/internal/version"
 )
 
-//nolint:gochecknoglobals
 var appFlag = &cli.StringFlag{
 	Name:  "app",
 	Usage: "app to bump",
@@ -93,7 +92,6 @@ func Bump() *cli.Command {
 	}
 }
 
-//nolint:gocognit
 func tagAction(ctx context.Context, cmd *cli.Command) error {
 	logger := log.FromContext(ctx)
 	out := output.FromContext(ctx)
@@ -439,7 +437,6 @@ func BumpPre() *cli.Command {
 	}
 }
 
-//nolint:gocognit
 func preAction(ctx context.Context, cmd *cli.Command) error {
 	logger := log.FromContext(ctx)
 	out := output.FromContext(ctx)

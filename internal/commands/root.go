@@ -21,13 +21,13 @@ type BuildInfo struct {
 
 const buildInfoKey = "buildInfo"
 
-//nolint:gochecknoglobals // cli.VersionPrinter is a package global of urfave/cli.
+// Guards cli.VersionPrinter, a package global of urfave/cli.
 var versionPrinterOnce sync.Once
 
 // Root returns the root forge command with all subcommands registered.
 func Root(info BuildInfo) *cli.Command {
 	versionPrinterOnce.Do(func() {
-		cli.VersionPrinter = printVersion //nolint:reassign // urfave/cli exposes no other hook
+		cli.VersionPrinter = printVersion // urfave/cli exposes no other hook
 	})
 
 	return &cli.Command{
